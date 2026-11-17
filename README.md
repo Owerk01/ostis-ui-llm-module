@@ -5,21 +5,19 @@
 
 Контракт этапа — [`AGENTS.md`](AGENTS.md). Ход работ — [`PROGRESS.md`](PROGRESS.md).
 
-> Сейчас реализована веха **M0** (подготовка и смоук платформы).
-> Сервис, панель и knowledge pack появятся в M1–M2.
+> Сейчас реализованы вехи **M0** (платформа) и **M1** (локальная модель,
+> knowledge pack, FastAPI-сервис, изолированная панель). Работают:
+> - режим `direct-http` (отладочный) с потоковым SSE;
+> - ответы по каталогу: 16 типов, 27 свойств, 4 отношения;
+> - пост-валидация идентификаторов и чипы оснований;
+> - отмена, таймауты, ошибки LLM, повтор запроса.
+>
+> В M2 появятся знания в БЗ, sc-агент и транспорт `sc-memory`; в M3 — gold-набор
+> и метрики качества.
 
-## Что уже работает в M0
+## Быстрый старт (Linux)
 
-- каркас репозитория;
-- read-only клоны `external/` с зафиксированными коммитами;
-- нативный `sc-machine 0.10.5` без Docker и sudo (`.runtime/`);
-- сборка БЗ из `external/ostis-example-app` + схемы UI редактора и примеров;
-- смоук-тест `tools/kb_smoke_test.py`: читает `ex_login` и типы компонентов;
-- локальная LLM: `qwen3.5:4b` через Ollama (настройки из AGENTS.md, раздел 2.3).
-
-## Быстрый старт (Linux, M0)
-
-Требования: Python 3.12, `git`, `curl`, `zstd`, Ollama (или установите его
+Требования: Python 3.12, Node 20+, `git`, `curl`, `zstd`, Ollama (можно
 пользовательски, см. ниже).
 
 ```bash
@@ -27,25 +25,36 @@ cp .env.example .env
 
 make setup        # скачать sc-machine 0.10.5 в .runtime/
 make kb           # собрать БЗ (первый раз ~3 мин)
-make machine      # запустить sc-machine на 127.0.0.1:8090
-make ollama       # запустить Ollama с нужными переменными
-make pull         # скачать qwen3.5:4b (если ещё нет)
-make smoke        # проверить чтение БЗ
+make machine      # sc-machine на 127.0.0.1:8090
+make ollama       # Ollama с настройками из AGENTS.md 2.3
+make pull         # qwen3.5:4b (если ещё нет)
+
+make pack         # knowledge/pack.json из каталога редактора
+make service      # FastAPI на 127.0.0.1:8770 (отдельный терминал)
+make panel        # панель на 127.0.0.1:5173 (отдельный терминал)
+```
+
+Открыть `http://127.0.0.1:5173/`, задать вопрос, например
+«Чем `concept_ui_button` отличается от `concept_ui_menu_item`?».
+
+Проверка:
+
+```bash
+make test         # pytest сервиса + typecheck панели
+make smoke        # чтение БЗ (нужна sc-machine)
 ```
 
 Повторный `make up` не пересобирает БЗ и не скачивает модель заново;
-для пересборки БЗ используйте `make kb` (sc-machine при этом должна быть остановлена).
+для пересборки БЗ — `make kb` (sc-machine должна быть остановлена).
 
 Остановка:
 
 ```bash
 make down         # остановить sc-machine
-make ollama-stop  # остановить Ollama, если он запущен через make
+make ollama-stop  # остановить Ollama, если запущен через make
 ```
 
 ### Установка Ollama без sudo
-
-Если системного Ollama нет и нет прав root:
 
 ```bash
 curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst \
@@ -55,21 +64,54 @@ curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst \
 
 `make ollama` найдёт `~/.local/bin/ollama` автоматически.
 
+## Сервис direct-http (M1)
+
+| Метод | Путь | Назначение |
+|---|---|---|
+| `GET` | `/health` | модель, LLM, источник знаний, версия pack |
+| `POST` | `/dialog` | создать диалог |
+| `POST` | `/ask` | вопрос, ответ потоком SSE |
+| `GET` | `/history/{dialog_id}` | история диалога в памяти сервиса |
+| `POST` | `/cancel` | мягкая отмена |
+
+Проверка без панели:
+
+```bash
+curl -s http://127.0.0.1:8770/health | python -m json.tool
+curl -sN -X POST http://127.0.0.1:8770/ask \
+  -H 'Content-Type: application/json' \
+  -d '{"question":"Что задаёт свойство action_id?"}'
+```
+
+События SSE: `meta`, `delta`, `done`, `cancelled`, `error`.
+Ответ сначала генерируется и валидируется целиком, затем отдаётся кусками:
+так гарантируется отсутствие выдуманных идентификаторов (FR-13).
+
+## Панель
+
+Панель — изолированный React-компонент `<AssistantPanel transport={...} />`.
+Инструкция встраивания, props и правила изоляции стилей — [`panel/README.md`](panel/README.md).
+Dev-стенд позволяет сменить адрес сервиса и проверить `onSourceClick`.
+
 ## Структура
 
 ```
 external/            read-only клоны репозиториев команды (gitignore)
 platform/            repo.path и конфигурация sc-machine
-knowledge/           provenance; pack.json появится в M1
+knowledge/           pack.json, provenance.json, prompt_v1.md, purpose_overrides.json
 kb/ui_assistant/     наши конструкции диалога и знаний (M2)
-tools/               setup, сборка БЗ, смоук, будущие pack/eval
-service/             Python-сервис (M1–M2)
-panel/               панель чата React (M1)
-docs/                контракты, знания, методика оценки
+tools/               setup, сборка БЗ, pack, смоук
+service/             Python-сервис: LLM, знания, валидация, FastAPI
+panel/               панель чата React + dev-стенд
+docs/                контракты, знания, методика оценки, скриншоты
+eval/                gold-набор и отчёты (M3)
 ```
 
 ## Важно
 
 - `external/` не редактируется; схема UI не копируется и не переопределяется.
-- На этапе 1 ассистент **не изменяет** модель интерфейса.
+- На этапе 1 ассистент **не изменяет** модель интерфейса и не вызывает
+  `action_translate_sc_to_html`.
+- Знания в M1 берутся из `knowledge/pack.json`, поэтому `/health` честно
+  показывает `knowledge_source: fallback`; чтение из БЗ — M2.
 - Для запуска не требуется Docker.
