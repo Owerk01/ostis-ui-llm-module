@@ -1,0 +1,35 @@
+# Внешние репозитории команды — только для чтения, в историю не попадают
+external/
+
+# Локальное окружение и секреты
+.venv/
+.env
+
+# Локальные артефакты платформы (бинарники sc-machine, собранная БЗ, pid-файлы)
+.runtime/
+kb.bin/
+*.scdb
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+dist/
+build/
+
+# Node / панель
+node_modules/
+panel/dist/
+panel/.vite/
+
+# Журналы
+/logs/
+service/logs/*
+!service/logs/.gitkeep
+
+# ОС и редакторы
+.DS_Store
+.idea/
+.vscode/
