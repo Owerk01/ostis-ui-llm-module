@@ -20,9 +20,14 @@ help:
 	@echo "  make ollama-stop  — остановить Ollama, запущенный через make"
 	@echo "  make pull         — скачать модель qwen3.5:4b"
 	@echo "  make smoke        — смоук-тест чтения БЗ (M0-T6)"
-	@echo "  make venv         — создать .venv и поставить зависимости смоука"
+	@echo "  make venv         — создать .venv и поставить зависимости сервиса"
 	@echo "  make up / down    — поднять/остановить платформу M0"
-	@echo "M1/M2 (пока заглушки): make service / panel / pack / kb-load / test / eval"
+	@echo "M1 (реализовано):"
+	@echo "  make pack         — собрать knowledge/pack.json из каталога редактора"
+	@echo "  make service      — запустить FastAPI direct-http на 127.0.0.1:8770"
+	@echo "  make panel        — запустить dev-стенд панели на 127.0.0.1:5173"
+	@echo "  make test         — pytest сервиса + typecheck панели"
+	@echo "M2/M3: make kb-load / eval"
 
 setup:
 	@bash tools/setup_platform.sh
@@ -49,6 +54,7 @@ venv:
 	@test -d "$(VENV)" || $(PYTHON) -m venv "$(VENV)"
 	@$(VENV)/bin/pip install -q -U pip
 	@$(VENV)/bin/pip install -q -r tools/requirements-m0.txt
+	@$(VENV)/bin/pip install -q -e "./service[dev]"
 	@echo "Окружение готово: $(VENV)"
 
 smoke: venv
@@ -65,20 +71,27 @@ up: setup ollama pull
 down: machine-stop
 	@echo "sc-machine остановлена. Ollama оставлена запущенной; для остановки: make ollama-stop"
 
-service:
-	@echo "Будет реализовано в M1 (FastAPI-сервис)." >&2; exit 1
+pack: venv
+	@$(PY) tools/build_knowledge_pack.py
+
+service: venv
+	@test -f .env || echo "WARN: .env не найден, используются значения по умолчанию из .env.example" >&2
+	@$(PY) -m ostis_ui_assistant.main
 
 panel:
-	@echo "Будет реализовано в M1 (панель чата)." >&2; exit 1
-
-pack:
-	@echo "Будет реализовано в M1-T2 (knowledge pack)." >&2; exit 1
+	@cd panel && if [ ! -d node_modules ]; then npm install --no-audit --no-fund; fi
+	@cd panel && npm run dev
 
 kb-load:
 	@echo "Полная загрузка нашего фрагмента в БЗ — M2-T5; сейчас используется make kb." >&2; exit 1
 
-test:
-	@echo "Будет реализовано в M1/M2 (pytest + проверка коллизий)." >&2; exit 1
+test: venv
+	@$(VENV)/bin/pytest -q service/tests
+	@if [ -d panel/node_modules ]; then \
+		cd panel && npm run typecheck; \
+	else \
+		echo "WARN: panel/node_modules отсутствует, typecheck панели пропущен (make panel)" >&2; \
+	fi
 
 eval:
 	@echo "Будет реализовано в M3 (gold-набор)." >&2; exit 1

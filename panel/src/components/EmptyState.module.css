@@ -1,0 +1,43 @@
+.oaa-empty {
+  margin: auto;
+  max-width: 460px;
+  padding: 24px;
+  text-align: center;
+  color: #4b5563;
+}
+
+.oaa-empty-title {
+  margin: 0 0 8px;
+  font-size: 15px;
+  font-weight: 600;
+  color: #1f2328;
+}
+
+.oaa-empty-text {
+  margin: 0 0 16px;
+  font-size: 13px;
+  line-height: 1.5;
+}
+
+.oaa-suggestions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+}
+
+.oaa-suggestion {
+  border: 1px solid #d0d7de;
+  border-radius: 999px;
+  background: #f6f8fa;
+  color: #1f2328;
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.oaa-suggestion:hover {
+  border-color: #2563eb;
+  color: #1d4ed8;
+}

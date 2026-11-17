@@ -1,0 +1,73 @@
+.oaa-status {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: center;
+  padding: 7px 16px;
+  border-bottom: 1px solid #e5e7eb;
+  background: #f9fafb;
+  font-size: 11px;
+  color: #4b5563;
+}
+
+.oaa-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #9ca3af;
+}
+
+.oaa-dot-ok {
+  background: #16a34a;
+}
+
+.oaa-dot-bad {
+  background: #dc2626;
+}
+
+.oaa-item {
+  white-space: nowrap;
+}
+
+.oaa-strong {
+  font-weight: 600;
+  color: #1f2328;
+}
+
+.oaa-sep {
+  color: #d1d5db;
+}
+
+.oaa-mono {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+}
+
+.oaa-pending {
+  display: inline-flex;
+  gap: 8px;
+  align-items: center;
+  margin-left: auto;
+}
+
+.oaa-timer {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: 11px;
+  color: #1d4ed8;
+  font-variant-numeric: tabular-nums;
+}
+
+.oaa-cancel {
+  border: 1px solid #d0d7de;
+  border-radius: 6px;
+  background: #fff;
+  color: #374151;
+  font: inherit;
+  font-size: 11px;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.oaa-cancel:hover {
+  border-color: #dc2626;
+  color: #b91c1c;
+}

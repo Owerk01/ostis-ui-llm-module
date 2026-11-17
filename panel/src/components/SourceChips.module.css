@@ -1,0 +1,40 @@
+.oaa-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.oaa-chip {
+  display: inline-flex;
+  gap: 6px;
+  align-items: baseline;
+  border: 1px solid #cbd5e1;
+  border-radius: 999px;
+  background: #fff;
+  color: #334155;
+  font: inherit;
+  font-size: 11px;
+  line-height: 1.2;
+  padding: 3px 9px;
+  cursor: pointer;
+}
+
+.oaa-chip:hover:not(:disabled) {
+  border-color: #2563eb;
+  background: #eff6ff;
+}
+
+.oaa-chip:disabled {
+  cursor: default;
+  opacity: 0.85;
+}
+
+.oaa-chip-idtf {
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  color: #1d4ed8;
+}
+
+.oaa-chip-label {
+  color: #64748b;
+}
