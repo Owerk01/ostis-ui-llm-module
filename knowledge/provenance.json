@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-11-17T17:25:00Z",
+  "note": "Коммиты зафиксированы на момент M0-T2. external/ — read-only клоны; сборка БЗ ссылается на них напрямую.",
+  "repositories": {
+    "ostis-ui-editor": {
+      "repo": "https://github.com/vodo4kin/ostis-ui-editor",
+      "commit": "f6eb4faf1808a636d3ef63764099338e4ca2f1bc",
+      "branch": "main",
+      "commit_date": "2026-11-12T21:54:23+03:00",
+      "path": "external/ostis-ui-editor",
+      "role": "Единственный источник истины по каталогу: docs/catalog.md, docs/abstract_ui_model.scs, client/src/model/catalog.ts, client/src/sc/names.ts, ui_examples/"
+    },
+    "ostis-ui": {
+      "repo": "https://github.com/Glentas/ostis-ui",
+      "commit": "a6737666b4204a987c8d952ee2ddf0645fc79f8a",
+      "branch": "feature/SCS_to_HTML",
+      "commit_date": "2026-11-15T19:23:30+03:00",
+      "path": "external/ostis-ui",
+      "role": "Справка о HTML-представлении компонентов и действии action_translate_sc_to_html; на этапе 1 не вызывается"
+    },
+    "UI-adaptation": {
+      "repo": "https://github.com/Oddchew/UI-adaptation",
+      "commit": "5c3d627a3ab4c94e5719d01a040021fb5b65f7e9",
+      "branch": "main",
+      "commit_date": "2026-11-15T23:33:01+03:00",
+      "path": "external/UI-adaptation",
+      "role": "Образец Python-сервиса и подключения к sc-памяти; знания о контуре A/B/C; интеграции на этапе 1 нет"
+    },
+    "ostis-example-app": {
+      "repo": "https://github.com/ostis-apps/ostis-example-app",
+      "commit": "48218b5b5dba2288b030368f77bd82c3c05d08b5",
+      "branch": "0.10.0",
+      "commit_date": "2025-12-07T16:41:30+03:00",
+      "path": "external/ostis-example-app",
+      "role": "Базовые онтологии и конфигурация для нативного запуска sc-machine; используется только как источник БЗ"
+    }
+  },
+  "platform": {
+    "sc_machine_version": "0.10.5",
+    "sc_builder_version": "0.10.5",
+    "source": "https://github.com/ostis-ai/sc-machine/releases/tag/0.10.5",
+    "install": "нативный prebuilt (Linux x86_64), без Docker"
+  },
+  "knowledge_blocks": {}
+}
