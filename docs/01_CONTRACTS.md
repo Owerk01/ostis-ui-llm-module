@@ -21,6 +21,9 @@
 | Docker | не требуется |
 | Схема UI | `external/ostis-ui-editor/docs/abstract_ui_model.scs` (не копируется) |
 | Базовые онтологии | `external/ostis-example-app/knowledge-base` |
+| Python-клиент | `py-sc-client 0.4.0`, `py-sc-kpm 0.4.0` |
+| Совместимость | смоук M0-T6 пройден на sc-machine 0.10.5 |
+| Сборка БЗ | ~3 мин, 96 123 элемента; `repo.path` относительно `platform/` |
 
 ## Открытые вопросы к команде (раздел 7 AGENTS.md)
 

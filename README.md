@@ -26,12 +26,15 @@
 cp .env.example .env
 
 make setup        # скачать sc-machine 0.10.5 в .runtime/
-make kb           # собрать БЗ
+make kb           # собрать БЗ (первый раз ~3 мин)
 make machine      # запустить sc-machine на 127.0.0.1:8090
 make ollama       # запустить Ollama с нужными переменными
-make pull         # скачать qwen3.5:4b
+make pull         # скачать qwen3.5:4b (если ещё нет)
 make smoke        # проверить чтение БЗ
 ```
+
+Повторный `make up` не пересобирает БЗ и не скачивает модель заново;
+для пересборки БЗ используйте `make kb` (sc-machine при этом должна быть остановлена).
 
 Остановка:
 

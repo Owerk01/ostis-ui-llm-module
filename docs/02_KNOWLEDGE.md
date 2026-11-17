@@ -15,8 +15,10 @@
 
 ## Сборка БЗ в M0
 
-`platform/repo.path` ссылается на external-файлы напрямую. Сборка:
-`make kb` → `.runtime/kb.bin`. Наши знания (`kb/ui_assistant/`) добавляются
-в repo.path в M2.
+`platform/repo.path` ссылается на external-файлы напрямую; пути разрешаются
+относительно каталога `platform/`, поэтому используются `../external/...`.
+Сборка: `make kb` → `.runtime/kb.bin` (~3 мин). Пересборка требует остановленной
+sc-machine: `make kb` проверяет pid и отказывается перезаписывать открытую БЗ.
+Наши знания (`kb/ui_assistant/`) добавляются в repo.path в M2.
 
 Пересборка knowledge pack и генерация `ui_catalog_knowledge.scs` — M1-T2/M2-T3.
