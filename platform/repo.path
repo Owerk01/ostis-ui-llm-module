@@ -1,0 +1,15 @@
+# Пути к исходникам БЗ для sc-builder.
+# ВАЖНО: файлы команды не копируются — используются напрямую из external/ (read-only).
+# Пути относительны КАТАЛОГА ЭТОГО ФАЙЛА (platform/), а не текущего каталога.
+
+# Базовые онтологии ostis-example-app (стандартные понятия и отношения)
+../external/ostis-example-app/knowledge-base
+
+# Формальная схема UI из репозитория редактора (единственный источник истины)
+../external/ostis-ui-editor/docs/abstract_ui_model.scs
+
+# Примеры интерфейсов: нужны для смоук-теста ex_login
+../external/ostis-ui-editor/ui_examples
+
+# Наши знания и конструкции диалога (появятся в M2)
+# kb/ui_assistant
