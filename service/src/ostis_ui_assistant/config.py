@@ -1,0 +1,66 @@
+"""Конфигурация сервиса из .env (раздел 3.4 AGENTS.md)."""
+
+from __future__ import annotations
+
+from pathlib import Path
+from typing import Literal
+
+from pydantic_settings import BaseSettings, SettingsConfigDict
+
+ROOT_DIR = Path(__file__).resolve().parents[3]
+
+
+class Settings(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_file=ROOT_DIR / ".env",
+        env_file_encoding="utf-8",
+        extra="ignore",
+        case_sensitive=False,
+    )
+
+    # --- LLM ---
+    llm_backend: Literal["ollama", "openai"] = "ollama"
+    llm_base_url: str = "http://127.0.0.1:11434"
+    llm_model: str = "qwen3.5:4b"
+    llm_api_key: str = ""
+    llm_num_ctx: int = 8192
+    llm_temperature: float = 0.2
+    llm_top_p: float = 0.9
+    llm_think: bool = False
+    llm_keep_alive: str = "30m"
+    llm_timeout_s: float = 120.0
+    llm_max_output_tokens: int = 512
+
+    # --- OSTIS ---
+    sc_ws_url: str = "ws://127.0.0.1:8090/ws_json"
+    assistant_transport: Literal["sc-memory", "direct-http"] = "sc-memory"
+    knowledge_source: Literal["kb", "fallback"] = "kb"
+    kb_fallback_allowed: bool = True
+
+    # --- Сервис ---
+    api_host: str = "127.0.0.1"
+    api_port: int = 8770
+    log_level: str = "INFO"
+    prompt_version: str = "v1"
+
+    # --- Пути ---
+    knowledge_pack_path: Path = ROOT_DIR / "knowledge" / "pack.json"
+    prompt_path: Path = ROOT_DIR / "knowledge" / "prompt_v1.md"
+    dialog_log_path: Path = ROOT_DIR / "service" / "logs" / "dialog.jsonl"
+    cors_origins: list[str] = [
+        "http://127.0.0.1:5173",
+        "http://localhost:5173",
+    ]
+
+    @property
+    def project_root(self) -> Path:
+        return ROOT_DIR
+
+    @property
+    def is_ollama(self) -> bool:
+        return self.llm_backend == "ollama"
+
+    @property
+    def effective_knowledge_source(self) -> str:
+        """В M1 знания всегда из pack.json; kb появится в M2-T6."""
+        return "fallback"

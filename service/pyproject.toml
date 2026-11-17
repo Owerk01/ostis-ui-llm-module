@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ostis-ui-assistant"
+version = "0.1.0"
+description = "Ассистент разработчика ПИ для инструментальной среды OSTIS"
+requires-python = ">=3.11"
+dependencies = [
+  "fastapi>=0.115",
+  "uvicorn[standard]>=0.30",
+  "httpx>=0.27",
+  "pydantic>=2.8",
+  "pydantic-settings>=2.4",
+  "python-dotenv>=1.0",
+  "openai>=1.40",
+  "py-sc-client>=0.4.0",
+  "py-sc-kpm>=0.4.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0",
+  "pytest-asyncio>=0.23",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-m 'not llm'"
+asyncio_default_fixture_loop_scope = "function"
+markers = [
+  "llm: требует запущенной LLM (по умолчанию skip)",
+  "kb: требует запущенной sc-machine (по умолчанию skip)",
+]
