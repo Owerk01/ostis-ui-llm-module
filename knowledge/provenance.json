@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-17T17:25:00Z",
+  "generated_at": "2026-11-17T15:12:47Z",
   "note": "Коммиты зафиксированы на момент M0-T2. external/ — read-only клоны; сборка БЗ ссылается на них напрямую.",
   "repositories": {
     "ostis-ui-editor": {
@@ -42,5 +42,30 @@
     "source": "https://github.com/ostis-ai/sc-machine/releases/tag/0.10.5",
     "install": "нативный prebuilt (Linux x86_64), без Docker"
   },
-  "knowledge_blocks": {}
+  "knowledge_blocks": {
+    "catalog_types": {
+      "repo": "https://github.com/vodo4kin/ostis-ui-editor",
+      "commit": "f6eb4faf1808a636d3ef63764099338e4ca2f1bc",
+      "file": "client/src/model/catalog.ts; client/src/sc/names.ts; client/src/model/propSets.ts",
+      "extracted_at": "2026-11-17T15:12:47Z",
+      "degraded": false,
+      "count": 16
+    },
+    "catalog_properties": {
+      "repo": "https://github.com/vodo4kin/ostis-ui-editor",
+      "commit": "f6eb4faf1808a636d3ef63764099338e4ca2f1bc",
+      "file": "client/src/model/catalog.ts; client/src/sc/names.ts; client/src/model/propSets.ts",
+      "extracted_at": "2026-11-17T15:12:47Z",
+      "degraded": false,
+      "count": 27
+    },
+    "catalog_relations": {
+      "repo": "https://github.com/vodo4kin/ostis-ui-editor",
+      "commit": "f6eb4faf1808a636d3ef63764099338e4ca2f1bc",
+      "file": "client/src/model/catalog.ts; client/src/sc/names.ts; client/src/model/propSets.ts",
+      "extracted_at": "2026-11-17T15:12:47Z",
+      "degraded": false,
+      "count": 4
+    }
+  }
 }
