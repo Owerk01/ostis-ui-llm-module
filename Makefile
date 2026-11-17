@@ -43,8 +43,7 @@ ollama-stop:
 	@bash tools/stop_ollama.sh
 
 pull: ollama
-	@OLLAMA_BIN=$$(command -v ollama || echo $$HOME/.local/bin/ollama); \
-	 "$$OLLAMA_BIN" pull qwen3.5:4b
+	@bash tools/pull_model.sh
 
 venv:
 	@test -d "$(VENV)" || $(PYTHON) -m venv "$(VENV)"
@@ -55,7 +54,12 @@ venv:
 smoke: venv
 	@$(PY) tools/kb_smoke_test.py
 
-up: setup kb machine ollama pull
+# Повторный up не пересобирает БЗ (это ~3 мин); для пересборки есть make kb.
+up: setup ollama pull
+	@if [ ! -d .runtime/kb.bin ]; then \
+		$(MAKE) machine-stop kb; \
+	fi
+	@$(MAKE) machine
 	@echo "Платформа M0 готова: sc-machine 8090, Ollama 11434, модель qwen3.5:4b"
 
 down: machine-stop

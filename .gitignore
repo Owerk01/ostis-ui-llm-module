@@ -29,6 +29,9 @@ panel/.vite/
 service/logs/*
 !service/logs/.gitkeep
 
+# Исходное описание проекта (большой бинарный документ, не артефакт сборки)
+*.odt
+
 # ОС и редакторы
 .DS_Store
 .idea/

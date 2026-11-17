@@ -11,6 +11,13 @@ if [ ! -x "$SC_BUILDER" ]; then
   exit 1
 fi
 
+PID_FILE="$ROOT/.runtime/sc-machine.pid"
+if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
+  echo "ОШИБКА: sc-machine запущена и держит .runtime/kb.bin." >&2
+  echo "Остановите её перед пересборкой: make machine-stop" >&2
+  exit 1
+fi
+
 mkdir -p "$ROOT/.runtime" "$ROOT/service/logs"
 "$SC_BUILDER" -i platform/repo.path -o .runtime/kb.bin --clear
 echo "БЗ собрана: $ROOT/.runtime/kb.bin"
