@@ -12,7 +12,7 @@ from ostis_ui_assistant.config import Settings
 
 ROOT = Path(__file__).resolve().parents[2]
 PACK_PATH = ROOT / "knowledge" / "pack.json"
-PROMPT_PATH = ROOT / "knowledge" / "prompt_v1.md"
+PROMPT_PATH = ROOT / "knowledge" / "prompt_v3.md"
 
 
 @pytest.fixture(scope="session")

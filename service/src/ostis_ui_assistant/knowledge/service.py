@@ -22,13 +22,20 @@ from .render import (
     load_pack,
     load_template,
 )
-from .validate import ValidationResult, extract_identifiers, validate_answer
+from .validate import ValidationResult, extract_identifiers, find_unknown, validate_answer
 
 logger = logging.getLogger(__name__)
 
 
 class Cancelled(Exception):
     """Генерация отменена пользователем."""
+
+
+UNKNOWN_ID_REFUSAL = (
+    "В базе знаний среды нет сведений об указанном идентификаторе: его нет в каталоге, "
+    "и я не создаю новые компоненты. Могу ответить о типах компонентов, их свойствах, "
+    "принципах разработки, методике или устройстве среды."
+)
 
 
 @dataclass
@@ -44,6 +51,7 @@ class AnswerResult:
     validation_removed: list[str] = field(default_factory=list)
     hallucinated: bool = False
     knowledge_source: str = "fallback"
+    guard: str = ""
 
 
 class KnowledgeService:
@@ -129,6 +137,27 @@ class KnowledgeService:
         if not question:
             raise ValueError("Пустой запрос")
 
+        # NFR-11 / FR-13: идентификаторы вне контракта не передаём модели вообще.
+        unknown = find_unknown(question)
+        if unknown:
+            logger.warning(
+                "Guard: в вопросе идентификаторы вне контракта: %s; LLM не вызывается",
+                ", ".join(unknown),
+            )
+            guard_started = time.perf_counter()
+            built = build_messages(question, self.pack, self.template)
+            result = AnswerResult(
+                text=UNKNOWN_ID_REFUSAL,
+                model=self.settings.llm_model,
+                prompt_version=self.prompt_version,
+                pack_version=self.pack_version,
+                latency_ms=round((time.perf_counter() - guard_started) * 1000, 1),
+                knowledge_source=self.knowledge_source,
+                guard="unknown_identifier",
+            )
+            self._write_log(question, result, built)
+            return result
+
         built = build_messages(question, self.pack, self.template)
         started = time.perf_counter()
         deadline = started + self.settings.llm_timeout_s
@@ -180,6 +209,7 @@ class KnowledgeService:
             "validation_removed": result.validation_removed,
             "knowledge_source": result.knowledge_source,
             "prompt_estimated_tokens": built.system_tokens,
+            "guard": result.guard,
         }
         path: Path = self.settings.dialog_log_path
         try:

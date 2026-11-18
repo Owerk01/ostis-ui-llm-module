@@ -110,7 +110,7 @@
 | `nrel_ui_value` (существующее) | текст сообщения в sc-link |
 | `nrel_ui_message_time` | ISO-8601 UTC |
 | `nrel_ui_message_state` | `done` / `error` / `cancelled` |
-| `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `v1\|pack:<ISO>` |
+| `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `<версия промпта>\|pack:<ISO>` (сейчас `v3`) |
 | `nrel_ui_answer_source` | ответ → узел-основание |
 
 Новых отношений для текста не вводится: используется существующее

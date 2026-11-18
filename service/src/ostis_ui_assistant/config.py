@@ -41,11 +41,11 @@ class Settings(BaseSettings):
     api_host: str = "127.0.0.1"
     api_port: int = 8770
     log_level: str = "INFO"
-    prompt_version: str = "v1"
+    prompt_version: str = "v3"
 
     # --- Пути ---
     knowledge_pack_path: Path = ROOT_DIR / "knowledge" / "pack.json"
-    prompt_path: Path = ROOT_DIR / "knowledge" / "prompt_v1.md"
+    prompt_path: Path = ROOT_DIR / "knowledge" / "prompt_v3.md"
     dialog_log_path: Path = ROOT_DIR / "service" / "logs" / "dialog.jsonl"
     cors_origins: list[str] = [
         "http://127.0.0.1:5173",

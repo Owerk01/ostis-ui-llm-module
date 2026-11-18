@@ -114,7 +114,7 @@ Dev-стенд позволяет сменить адрес сервиса и п
 ```
 external/            read-only клоны репозиториев команды (gitignore)
 platform/            repo.path и конфигурация sc-machine
-knowledge/           pack.json, provenance.json, prompt_v1.md, purpose_overrides.json
+knowledge/           pack.json, provenance.json, prompt_v*.md (текущий v3), purpose_overrides.json
 kb/ui_assistant/     наши конструкции диалога и знаний + generated тексты каталога
 tools/               setup, сборка БЗ, pack, смоук
 service/             Python-сервис: LLM, знания, валидация, FastAPI
