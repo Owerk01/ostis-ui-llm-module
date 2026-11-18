@@ -313,5 +313,9 @@ Python-тест зелёный.
 До: `ModuleNotFoundError: ostis_ui_assistant.knowledge.tokens`. После: 72
 Python-теста, `make test` зелёный.
 
+Итоговая проверка P2: E2E в sc-режиме — индикатор 97 мс, таймер `0,0 с → 0,9 с`,
+чипы, негативный отказ, отмена; `make smoke-action` — ответ в БЗ с версией
+промпта и источником `kb`.
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.

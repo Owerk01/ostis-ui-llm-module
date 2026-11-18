@@ -88,15 +88,24 @@ def main() -> int:
         print("negative: отказ вместо выдумки получен")
 
         # --- Отмена -----------------------------------------------------------
-        page.locator("#oaa-question").fill("Какие принципы разработки ПИ есть в базе знаний?")
+        page.locator("#oaa-question").fill(
+            "Перечисли все 16 типов компонентов и все 27 свойств с назначением."
+        )
         page.get_by_role("button", name="Отправить").click()
         cancel_button = page.get_by_role("button", name="Отмена")
         cancel_button.wait_for(state="visible", timeout=2_000)
-        page.wait_for_timeout(1_000)
-        timer = page.locator('[aria-label="Время обработки запроса"]').inner_text()
+        timer_locator = page.locator('[aria-label="Время обработки запроса"]')
+        timer = timer_locator.inner_text()
         assert re.fullmatch(r"[01],\d с", timer), f"таймер показывает {timer!r}"
         print(f"timer: {timer}")
-        cancel_button.click()
+        page.wait_for_timeout(900)
+        if timer_locator.count():
+            timer_later = timer_locator.inner_text()
+            assert re.fullmatch(r"[01],\d с", timer_later), timer_later
+            assert timer_later != timer, "таймер не тикает"
+            print(f"timer: {timer} → {timer_later}")
+        if cancel_button.is_visible():
+            cancel_button.click()
         page.get_by_text("Отменено").first.wait_for(timeout=5_000)
         print("cancel: сообщение помечено «Отменено»")
 
