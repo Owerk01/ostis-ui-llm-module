@@ -294,5 +294,15 @@ typecheck и `make test` зелёные.
 Проверка: `ui_principle_accessibility` проходит, `ui_fake_section` вырезается
 с пометкой. 69 Python-тестов зелёные.
 
+## FIX-P2-6. Ролевые узлы rrel_11+
+
+Изменено: валидатор разрешает `rrel_<число>` (стандартные 1..10 и генерируемые
+`dialog_store` 11+); контракт фиксирует решение «генерируем узлы сами, не меняем
+порядок на счётчик». Тесты `test_generated_role_identifiers_allowed` и
+`test_roles_above_ten_are_generated`.
+
+До: первый тест падал (`find_unknown` вернул `['rrel_11']`). После: 71
+Python-тест зелёный.
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.

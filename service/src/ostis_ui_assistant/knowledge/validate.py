@@ -50,7 +50,10 @@ def find_unknown(
     allowed = whitelist if whitelist is not None else ALLOWED_IDENTIFIERS
     seen: dict[str, None] = {}
     for identifier in extract_identifiers(text):
-        if identifier not in allowed:
+        # rrel_1..10 — стандартные, rrel_11+ генерирует dialog_store для длинных
+        # диалогов; оба варианта являются допустимыми ролевыми узлами.
+        generated_role = identifier.startswith("rrel_") and identifier[5:].isdigit()
+        if identifier not in allowed and not generated_role:
             seen.setdefault(identifier, None)
     return list(seen)
 

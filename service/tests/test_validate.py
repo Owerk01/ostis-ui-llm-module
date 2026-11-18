@@ -89,6 +89,11 @@ def test_extract_ignores_plain_russian_words() -> None:
     assert extract_identifiers("Кнопка и пункт меню — это компоненты.") == []
 
 
+def test_generated_role_identifiers_allowed() -> None:
+    """rrel_11+ создаются нами для длинных диалогов и не считаются галлюцинацией."""
+    assert find_unknown("роль `rrel_11` задаёт порядок сообщения") == []
+
+
 def test_unknown_knowledge_identifier_removed() -> None:
     """Выдуманные ui_*-ссылки на несуществующие узлы знаний вырезаются."""
     result = validate_answer("См. раздел ui_fake_section.")

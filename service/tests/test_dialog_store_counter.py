@@ -77,3 +77,21 @@ def test_read_history_batches_queries(monkeypatch) -> None:
 
     assert len(history) == 10
     assert calls <= 12  # вместо ~10 запросов на каждое сообщение
+
+
+def test_roles_above_ten_are_generated(monkeypatch) -> None:
+    captured: list[str] = []
+
+    class FakeKeynodes(dict):
+        def rrel_index(self, index: int):
+            return MagicMock(value=index)
+
+        def resolve(self, idtf: str, node_type):
+            captured.append(idtf)
+            return MagicMock(value=11)
+
+    monkeypatch.setattr(dialog_store, "ScKeynodes", FakeKeynodes())
+
+    assert dialog_store._rrel(2).is_valid()
+    assert dialog_store._rrel(11).is_valid()
+    assert captured == ["rrel_11"]
