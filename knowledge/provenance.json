@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "generated_at": "2026-11-18T06:31:11Z",
+  "generated_at": "2026-11-18T07:37:23Z",
   "note": "Коммиты зафиксированы на момент M0-T2. external/ — read-only клоны; сборка БЗ ссылается на них напрямую.",
   "repositories": {
     "ostis-ui-editor": {
@@ -47,7 +47,7 @@
       "repo": "https://github.com/vodo4kin/ostis-ui-editor",
       "commit": "f6eb4faf1808a636d3ef63764099338e4ca2f1bc",
       "file": "client/src/model/catalog.ts; client/src/sc/names.ts; client/src/model/propSets.ts",
-      "extracted_at": "2026-11-18T06:31:11Z",
+      "extracted_at": "2026-11-18T07:37:23Z",
       "degraded": false,
       "count": 16
     },
@@ -55,7 +55,7 @@
       "repo": "https://github.com/vodo4kin/ostis-ui-editor",
       "commit": "f6eb4faf1808a636d3ef63764099338e4ca2f1bc",
       "file": "client/src/model/catalog.ts; client/src/sc/names.ts; client/src/model/propSets.ts",
-      "extracted_at": "2026-11-18T06:31:11Z",
+      "extracted_at": "2026-11-18T07:37:23Z",
       "degraded": false,
       "count": 27
     },
@@ -63,7 +63,7 @@
       "repo": "https://github.com/vodo4kin/ostis-ui-editor",
       "commit": "f6eb4faf1808a636d3ef63764099338e4ca2f1bc",
       "file": "client/src/model/catalog.ts; client/src/sc/names.ts; client/src/model/propSets.ts",
-      "extracted_at": "2026-11-18T06:31:11Z",
+      "extracted_at": "2026-11-18T07:37:23Z",
       "degraded": false,
       "count": 4
     },
@@ -72,7 +72,7 @@
       "commit": null,
       "file": "kb/ui_assistant/ui_principles.scs",
       "source": "Проект инструментальной среды, раздел 5",
-      "extracted_at": "2026-11-18T06:31:11Z",
+      "extracted_at": "2026-11-18T07:37:23Z",
       "degraded": false,
       "count": 5
     },
@@ -81,7 +81,7 @@
       "commit": null,
       "file": "kb/ui_assistant/ui_methodology.scs",
       "source": "Проект инструментальной среды, раздел 4",
-      "extracted_at": "2026-11-18T06:31:11Z",
+      "extracted_at": "2026-11-18T07:37:23Z",
       "degraded": false,
       "count": 11
     },
@@ -90,7 +90,7 @@
       "commit": null,
       "file": "kb/ui_assistant/ui_environment.scs",
       "source": "Проект инструментальной среды, раздел 7",
-      "extracted_at": "2026-11-18T06:31:11Z",
+      "extracted_at": "2026-11-18T07:37:23Z",
       "degraded": false,
       "count": 4
     }

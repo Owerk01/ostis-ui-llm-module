@@ -1,7 +1,7 @@
 {
-  "pack_version": "2026-11-18T06:31:11Z",
+  "pack_version": "2026-11-18T07:37:23Z",
   "prompt_version": "v1",
-  "generated_at": "2026-11-18T06:31:11Z",
+  "generated_at": "2026-11-18T07:37:23Z",
   "degraded": false,
   "sources": {
     "catalog": "external/ostis-ui-editor",
