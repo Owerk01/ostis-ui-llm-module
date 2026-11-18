@@ -277,5 +277,15 @@ typecheck и `make test` зелёные.
 До: `ERR_MODULE_NOT_FOUND: errorHint.ts`. После: 12 node-тестов, typecheck и
 `make test` зелёные.
 
+## FIX-P2-4. Ограниченный repair
+
+Изменено: `_repair` принимает `deadline` и `cancel_event`, проверяет их перед
+запросом и на каждом куске; при отмене/таймауте возвращает исходный текст.
+`AnswerResult.repair_ms` и поле JSONL `repair_ms` отделяют время repair от
+генерации. Тесты `test_repair_bounds.py` добавлены.
+
+До: 2 теста падали (`TypeError: unexpected keyword argument 'deadline'`).
+После: 68 Python-тестов зелёные.
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.

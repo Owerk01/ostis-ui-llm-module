@@ -51,6 +51,7 @@ class AnswerResult:
     latency_ms: float = 0.0
     validation_removed: list[str] = field(default_factory=list)
     hallucinated: bool = False
+    repair_ms: float = 0.0
     tokens_unavailable: bool = False
     unknown_in_final: list[str] = field(default_factory=list)
     knowledge_source: str = "fallback"
@@ -126,7 +127,20 @@ class KnowledgeService:
             sources.append({"idtf": source_idtf, "labelRu": self._source_map[identifier]})
         return sources
 
-    def _repair(self, text: str, unknown: list[str]) -> str:
+    def _repair(
+        self,
+        text: str,
+        unknown: list[str],
+        *,
+        deadline: float | None = None,
+        cancel_event: threading.Event | None = None,
+    ) -> str:
+        """Один repair-запрос, ограниченный тем же дедлайном и отменой."""
+        if cancel_event is not None and cancel_event.is_set():
+            return text
+        if deadline is not None and time.perf_counter() >= deadline:
+            return text
+
         allowed = ", ".join(sorted(ALL_IDENTIFIERS | PROPERTY_KEYS))
         request = (
             "В ответе ассистента есть идентификаторы, которых нет в базе знаний: "
@@ -146,7 +160,14 @@ class KnowledgeService:
             },
             {"role": "user", "content": request},
         ]
-        return "".join(self.backend.chat(messages, max_tokens=512)).strip()
+        pieces: list[str] = []
+        for piece in self.backend.chat(messages, max_tokens=512):
+            if cancel_event is not None and cancel_event.is_set():
+                return text
+            if deadline is not None and time.perf_counter() >= deadline:
+                return text
+            pieces.append(piece)
+        return "".join(pieces).strip()
 
     def answer(self, question: str, cancel_event: threading.Event | None = None) -> AnswerResult:
         question = question.strip()
@@ -189,7 +210,18 @@ class KnowledgeService:
 
         raw_text = "".join(chunks).strip()
         stats: LLMStats = self.backend.last_stats
-        validation: ValidationResult = validate_answer(raw_text, repair=self._repair)
+        repair_times: list[float] = []
+
+        def repair(text: str, unknown: list[str]) -> str:
+            repair_started = time.perf_counter()
+            try:
+                return self._repair(
+                    text, unknown, deadline=deadline, cancel_event=cancel_event
+                )
+            finally:
+                repair_times.append((time.perf_counter() - repair_started) * 1000)
+
+        validation: ValidationResult = validate_answer(raw_text, repair=repair)
         latency_ms = (time.perf_counter() - started) * 1000
         sources = self._sources_for(validation.text)
 
@@ -204,6 +236,7 @@ class KnowledgeService:
             latency_ms=round(latency_ms, 1),
             validation_removed=validation.removed,
             hallucinated=validation.hallucinated,
+            repair_ms=round(sum(repair_times), 1),
             tokens_unavailable=stats.tokens_unavailable,
             unknown_in_final=find_unknown(validation.text),
             knowledge_source=self.knowledge_source,
@@ -222,6 +255,7 @@ class KnowledgeService:
             "prompt_version": result.prompt_version,
             "pack_version": result.pack_version,
             "latency_ms": result.latency_ms,
+            "repair_ms": result.repair_ms,
             "prompt_tokens": result.prompt_tokens,
             "output_tokens": result.output_tokens,
             "tokens_unavailable": result.tokens_unavailable,
