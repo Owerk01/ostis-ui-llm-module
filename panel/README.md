@@ -8,6 +8,7 @@
 
 ```
 src/
+├── index.ts                    # публичный API библиотеки (M4-T1)
 ├── AssistantPanel.tsx          # публичный компонент
 ├── AssistantPanel.module.css
 ├── transport/
@@ -23,15 +24,37 @@ src/
 └── dev/                        # dev-стенд (в редактор не встраивается)
 ```
 
-Зависимости панели — `react`, `react-dom` и `ts-sc-client`. Клиент создаёт
-редактор и передаёт его в `ScMemoryTransport`; остальной код панели к
-`ts-sc-client` не обращается.
+## Зависимости
 
-## Встраивание в редактор
+Пировые зависимости (должны уже быть в клиенте редактора): `react` 19,
+`react-dom` 19, `ts-sc-client` 0.5. Для сборки библиотеки нужны Node 20+ и npm.
+UI-кит и глобальные стили редактора не используются.
+
+## Сборка и встраивание в редактор
+
+```bash
+cd panel
+npm ci
+npm run build:lib        # dist-lib/index.js, index.css и .d.ts
+```
+
+`dist-lib/` — артефакт сборки (в `.gitignore`). Подключить его можно двумя
+способами, без правок кода этого репозитория:
+
+1. Локальной npm-зависимостью в клиенте редактора:
+
+```bash
+cd client
+npm install file:../ostis-ui-assistant-panel
+```
+
+2. Скопировать каталог `panel/dist-lib/` в клиент, например в
+   `client/vendor/ostis-ui-assistant-panel/`, и указать тот же `file:`-путь.
 
 ```tsx
-import { AssistantPanel } from 'ostis-ui-assistant-panel'
-import type { AssistantTransport } from 'ostis-ui-assistant-panel/transport/types'
+import { AssistantPanel, ScMemoryTransport } from 'ostis-ui-assistant-panel'
+import type { AssistantTransport, SourceRef } from 'ostis-ui-assistant-panel'
+import 'ostis-ui-assistant-panel/index.css'   // стили CSS-модулей, префикс oaa-
 
 const transport: AssistantTransport = new ScMemoryTransport(editor.scClient)
 
@@ -40,11 +63,14 @@ export function RightSidebar() {
     <AssistantPanel
       transport={transport}
       title="Ассистент разработчика ПИ"
-      onSourceClick={(ref) => editor.highlightNode(ref.scAddr)}
+      onSourceClick={(ref: SourceRef) => editor.highlightNode(ref.scAddr)}
     />
   )
 }
 ```
+
+`ScMemoryTransport` принимает **уже существующий** `ScClient` редактора: новый
+websocket не открывается. Остальной код панели к `ts-sc-client` не обращается.
 
 Требования к транспорту:
 
@@ -102,9 +128,10 @@ make panel
 
 ```bash
 cd panel
-npm install
-npm run build
+npm ci
 npm run typecheck
+npm run build        # dev-стенд → panel/dist
+npm run build:lib    # библиотека → panel/dist-lib
 ```
 
 ## Поведение
