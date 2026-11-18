@@ -133,3 +133,17 @@ factual_accuracy 71/75 = 0.947; incorrect_count = 2
 holdout 66.7% < 90%. Улучшение ответов возможно только через промпт и знания;
 проверки holdout и пороги не менялись после прогона. Дальнейшее улучшение
 ответов требует отдельной итерации промпта с новым зафиксированным прогоном holdout.
+
+## FIX-P1-1. Guard не блокирует легитимные вопросы
+
+Изменено:
+
+- `KnowledgeService._build_source_map`: добавлены knowledge-узлы и псевдонимы
+  `ENVIRONMENT_IDENTIFIERS` → `ui_env_html_representation`, чтобы ответ про
+  `action_translate_sc_to_html` получал основание.
+- Новый тест `test_environment_answer_has_source` (мок LLM): вопрос про HTML-трансляцию
+  даёт содержательный ответ с чипом основания; q043 проходит через LLM с guard=sanitized.
+
+До: `AssertionError` — `sources == []`, тест упал.
+После: 3 теста guard-модуля зелёные, `make test` — 57 passed.
+Метрики `guard_sanitized_rate` и `injection_resistance` были добавлены вместе с P0-3.

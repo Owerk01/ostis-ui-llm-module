@@ -44,6 +44,17 @@ def test_unknown_identifier_is_sanitized_but_question_reaches_llm(settings: Sett
     assert "concept_ui_chart" not in result.text
 
 
+def test_environment_answer_has_source(settings: Settings) -> None:
+    backend = DummyBackend("`action_translate_sc_to_html` выполняет трансляцию отдельным агентом.")
+    service = KnowledgeService(
+        settings.model_copy(update={"knowledge_source": "fallback"}),
+        backend=backend,
+    )
+    result = service.answer("Что делает action_translate_sc_to_html?")
+
+    assert any(source["idtf"] == "ui_env_html_representation" for source in result.sources)
+
+
 def test_only_identifier_left_gets_deterministic_refusal(settings: Settings) -> None:
     backend = DummyBackend()
     service = KnowledgeService(

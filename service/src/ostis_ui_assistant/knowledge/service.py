@@ -13,7 +13,7 @@ from typing import Any
 
 from ..config import Settings
 from ..llm.base import LLMBackend, LLMError, LLMStats, LLMTimeout, create_backend
-from .identifiers import ALL_IDENTIFIERS, PROPERTY_KEYS
+from .identifiers import ALL_IDENTIFIERS, ENVIRONMENT_IDENTIFIERS, PROPERTY_KEYS
 from .kb_reader import KbStatus, close as close_kb, load_pack_from_kb
 from .render import (
     PromptBuildResult,
@@ -73,6 +73,9 @@ class KnowledgeService:
         self._log_lock = threading.Lock()
         self._prompt: PromptBuildResult = build_prompt(self.pack, self.template)
         self._source_map = self._build_source_map()
+        self._source_aliases = {
+            identifier: "ui_env_html_representation" for identifier in ENVIRONMENT_IDENTIFIERS
+        }
 
         logger.info(
             "Knowledge pack %s (%s): %s типов, %s свойств, %s отношений; промпт ~%s токенов",
@@ -100,16 +103,26 @@ class KnowledgeService:
             result[item["sc_class"]] = f"свойство {item['key']}"
         for item in self.pack.get("relations", []):
             result[item["idtf"]] = item.get("meaning_ru", "отношение")
+        for section in ("principles", "methodology_stages", "environment_notes"):
+            for item in self.pack.get(section, []):
+                result[item["idtf"]] = item.get("title_ru", item["idtf"])
+        # Идентификаторы HTML-трансляции упоминаются в тексте заметки, но не совпадают
+        # с её idtf: без явного соответствия ответ не получил бы основание.
+        for identifier in ENVIRONMENT_IDENTIFIERS:
+            result[identifier] = "HTML-представление компонентов"
         return result
 
     def _sources_for(self, text: str) -> list[dict[str, str]]:
         sources: list[dict[str, str]] = []
         seen: set[str] = set()
         for identifier in extract_identifiers(text):
-            if identifier in seen or identifier not in self._source_map:
+            if identifier not in self._source_map:
                 continue
-            seen.add(identifier)
-            sources.append({"idtf": identifier, "labelRu": self._source_map[identifier]})
+            source_idtf = self._source_aliases.get(identifier, identifier)
+            if source_idtf in seen:
+                continue
+            seen.add(source_idtf)
+            sources.append({"idtf": source_idtf, "labelRu": self._source_map[identifier]})
         return sources
 
     def _repair(self, text: str, unknown: list[str]) -> str:
