@@ -110,5 +110,5 @@ test: venv
 		echo "WARN: panel/node_modules отсутствует, typecheck панели пропущен (make panel)" >&2; \
 	fi
 
-eval:
-	@echo "Будет реализовано в M3 (gold-набор)." >&2; exit 1
+eval: venv
+	@$(PY) tools/run_eval.py $(ARGS)
