@@ -1,6 +1,7 @@
 # 02. Знания
 
-Статус: M2 — знания читаются из БЗ, pack остаётся локальным fallback.
+Статус: **M4** — знания читаются из БЗ, pack остаётся локальным fallback;
+процедуры пересборки воспроизводимы с нуля.
 
 ## Источники
 
@@ -17,8 +18,9 @@
 
 `knowledge/pack.json` — нормализованная выжимка каталога и домен-знаний,
 которая целиком подаётся в системный промпт. RAG и эмбеддингов нет: при
-`num_ctx=8192` блок знаний занимает **3494 токена** (оценка `len/3`), системный
-промпт — ~4021. Это верхняя граница бюджета 3500; при её превышении
+`num_ctx=8192` блок знаний занимает **3497 токенов** (оценка `len/3`), системный
+промпт вместе с few-shot — около 4120 токенов по факту прогона. Это верхняя
+граница бюджета 3500; при её превышении
 `render.py` усекает `methodology_stages` и `environment_notes` до заголовков
 и пишет WARN.
 
@@ -41,6 +43,12 @@
 Русские назначения и смыслы хранятся отдельно в
 `knowledge/purpose_overrides.json`, чтобы не теряться при пересборке:
 `catalog.ts` даёт только машинные defaults и ярлыки.
+
+`render.py` добавляет в начало перечислений строки `типов: 16`,
+`свойств: 27 (все типы)`, `принципов: 5`. Они занимают ~15 токенов, но убирают
+пропуски последнего элемента в ответах «перечисли все». Рабочий шаблон —
+`knowledge/prompt_v3.md`; он закреплён в `Settings.prompt_path` и `.env.example`
+(`PROMPT_VERSION=v3`).
 
 ### Пересборка
 
@@ -122,6 +130,41 @@ sc-machine: `make kb` проверяет pid и отказывается пер�
    `make kb-load` → `make test`.
 3. Если в БЗ нет текста для класса, сервис не падает: он берёт pack и честно
    помечает частичную деградацию. Проверка: `curl /health | jq .kb`.
+
+## Воспроизводимость с нуля (M4-T3)
+
+Порядок на чистой машине (Linux x86_64; для Windows — WSL2, см. README):
+
+```bash
+# 1. Источники истины — только для чтения, фиксируем коммиты из provenance.json
+mkdir -p external
+git clone https://github.com/vodo4kin/ostis-ui-editor external/ostis-ui-editor
+git -C external/ostis-ui-editor checkout f6eb4fa
+git clone -b feature/SCS_to_HTML https://github.com/Glentas/ostis-ui external/ostis-ui
+git -C external/ostis-ui checkout a673766
+git clone https://github.com/Oddchew/UI-adaptation external/UI-adaptation
+git -C external/UI-adaptation checkout 5c3d627
+git clone -b 0.10.0 https://github.com/ostis-apps/ostis-example-app external/ostis-example-app
+
+# 2. Окружение и платформа
+make venv
+make setup                 # официальный prebuilt sc-machine 0.10.5
+make ollama && make pull
+
+# 3. Знания
+make pack                  # pack.json + provenance + generated .scs + проверка коллизий
+make machine-stop          # БЗ пересобирается только при остановленной sc-machine
+make kb-load               # build_kb → machine → smoke
+
+# 4. Проверки
+make test
+make eval ARGS="--label clean-machine"
+```
+
+`external/` в `.gitignore`: клоны не попадают в репозиторий, но обязательны для
+`make pack` и `make kb-load`. Если Node недоступен, `build_knowledge_pack.py`
+откатывается к разбору `docs/catalog.md` и ставит `degraded = true` — сервис
+пишет WARN, а ответы о размерах по умолчанию будут недоступны.
 
 ## Проверка целостности
 
