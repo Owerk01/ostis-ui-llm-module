@@ -18,7 +18,9 @@ ALLOWED_IDENTIFIERS = ALL_IDENTIFIERS | PROPERTY_KEYS
 
 # Ловим также верхний регистр и кириллицу внутри идентификатора, чтобы
 # пометить такие подмены как неизвестные, а не молча пропустить.
-IDENTIFIER_RE = re.compile(r"\b(?:concept|nrel|rrel|action)_[A-Za-z0-9_\u0400-\u04FF]+\b")
+IDENTIFIER_RE = re.compile(
+    r"\b(?:(?:concept|nrel|rrel|action)_[A-Za-z0-9_\u0400-\u04FF]+|ui_[a-z0-9_]+)\b"
+)
 REMOVAL_NOTE = "[часть ответа удалена: неизвестные идентификаторы]"
 
 RepairCallback = Callable[[str, list[str]], str]

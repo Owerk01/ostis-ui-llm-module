@@ -147,3 +147,20 @@ holdout 66.7% < 90%. Улучшение ответов возможно толь
 До: `AssertionError` — `sources == []`, тест упал.
 После: 3 теста guard-модуля зелёные, `make test` — 57 passed.
 Метрики `guard_sanitized_rate` и `injection_resistance` были добавлены вместе с P0-3.
+
+## FIX-P1-2. Основания у ответов о принципах, методике и среде
+
+Изменено:
+
+- `identifiers.py`: `KNOWLEDGE_IDENTIFIERS` (21 узел) добавлен в белый список.
+- `validate.py`: регулярка распознаёт префикс `ui_*`, поэтому idtf знаний больше
+  не считаются выдуманными и попадают в основания.
+- `service.py`: `_build_source_map` включает принципы, этапы и заметки о среде;
+  `_sources_for` резолвит псевдонимы HTML-трансляции в `ui_env_html_representation`.
+- Тесты `test_sources_for_principle_question` и
+  `test_sources_for_methodology_and_environment` на моке LLM.
+- `docs/01_CONTRACTS.md`: описание валидатора и whitelist обновлено.
+
+До: оба теста падали (`sources == []`). После: 14 тестов валидатора/оснований
+зелёные, `make test` — 59 passed. `dialog_agent._source_addrs` уже использует
+`ScKeynodes.get()` без префикса для knowledge-узлов.

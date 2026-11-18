@@ -146,6 +146,32 @@ ENVIRONMENT_IDENTIFIERS = {
     "rrel_specific_realisation",
 }
 
+# Собственные узлы знаний ассистента: принципы, этапы методики и заметки о среде.
+# Это не новые системные идентификаторы, а уже объявленные в kb/ui_assistant/*.scs.
+KNOWLEDGE_IDENTIFIERS = {
+    "ui_principle_accessibility",
+    "ui_principle_quick_learning",
+    "ui_principle_autonomous_changeability",
+    "ui_principle_reuse",
+    "ui_principle_semantic_compatibility",
+    "ui_methodology_processes",
+    "ui_stage_initial_task",
+    "ui_stage_initial_generation",
+    "ui_stage_initial_testing",
+    "ui_stage_editing_request",
+    "ui_stage_editing_apply",
+    "ui_stage_editing_testing",
+    "ui_stage_adaptation_collect",
+    "ui_stage_adaptation_decision",
+    "ui_stage_adaptation_rebuild",
+    "ui_stage_adaptation_update_model",
+    "ui_env_tool_modules",
+    "ui_env_solver_modules",
+    "ui_env_kb_module",
+    "ui_env_target_system",
+    "ui_env_html_representation",
+}
+
 ALL_IDENTIFIERS = (
     EXISTING_CLASSES
     | EXISTING_RELATIONS
@@ -154,4 +180,5 @@ ALL_IDENTIFIERS = (
     | NEW_ACTIONS
     | STANDARD_USED
     | ENVIRONMENT_IDENTIFIERS
+    | KNOWLEDGE_IDENTIFIERS
 )
