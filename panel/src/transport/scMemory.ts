@@ -21,6 +21,7 @@ import {
   ScType,
 } from 'ts-sc-client'
 
+import { findMessageInResult, type ResultRow } from './actionResult'
 import { healthFromMessages } from './health'
 import type {
   AssistantHealth,
@@ -58,6 +59,7 @@ interface ActiveRequest {
 interface Keynodes {
   dialog: ScAddr
   userMessage: ScAddr
+  assistantMessage: ScAddr
   action: ScAddr
   actionClass: ScAddr
   actionInitiated: ScAddr
@@ -190,9 +192,25 @@ export class ScMemoryTransport implements AssistantTransport {
       }
       if (!finished) throw new Error('Превышено время ожидания ответа')
 
-      const history = await this.history(String(dialog.value))
-      const last = [...history].reverse().find((message) => message.role === 'assistant')
-      if (!last) throw new Error('Агент завершил действие, но ответа в БЗ нет')
+      const result = await this.helper.getResult(action)
+      if (!result?.isValid()) {
+        throw new Error('Агент завершил действие, но результат в БЗ не оформлен')
+      }
+      const template = new ScTemplate()
+      template.triple(result, ScType.VarPermPosArc, [ScType.Unknown, '_element'])
+      const rows = (await this.client.searchByTemplate(template)) as unknown as ResultRow[]
+      const messageAddr = await findMessageInResult(
+        rows,
+        async (addr) => {
+          const template = new ScTemplate()
+          template.triple(k.assistantMessage, ScType.VarPermPosArc, addr as ScAddr)
+          return (await this.client.searchByTemplate(template)).length > 0
+        },
+      )
+      if (!messageAddr) {
+        throw new Error('Агент завершил действие, но результат в БЗ не оформлен')
+      }
+      const last = await this.readMessage(messageAddr as ScAddr, k)
 
       onDelta?.(last.text)
       if (last.state === 'error') {
@@ -424,6 +442,7 @@ export class ScMemoryTransport implements AssistantTransport {
     const classes = [
       'concept_ui_dialog',
       'concept_ui_user_message',
+      'concept_ui_assistant_message',
       'action',
       ACTION_CLASS,
       'action_initiated',
@@ -461,6 +480,7 @@ export class ScMemoryTransport implements AssistantTransport {
     this.keynodesCache = {
       dialog: resolved.concept_ui_dialog,
       userMessage: resolved.concept_ui_user_message,
+      assistantMessage: resolved.concept_ui_assistant_message,
       action: resolved.action,
       actionClass: resolved[ACTION_CLASS],
       actionInitiated: resolved.action_initiated,

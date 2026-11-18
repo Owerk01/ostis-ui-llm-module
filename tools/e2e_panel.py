@@ -43,8 +43,8 @@ def main() -> int:
         page.goto(PANEL_URL, wait_until="networkidle")
         page.get_by_role("heading", name="Ассистент разработчика ПИ").wait_for()
         if MODE == "sc-memory":
-            page.get_by_text("Знания из БЗ").wait_for(timeout=15_000)
-            print("health: режим sc-memory, знания из БЗ")
+            page.get_by_text("Источник знаний: уточняется").wait_for(timeout=15_000)
+            print("health: режим sc-memory, источник уточняется до первого ответа")
         else:
             page.get_by_text("Знания из локальной копии").wait_for()
             print("health: статус fallback отображается")

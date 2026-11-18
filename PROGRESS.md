@@ -186,3 +186,20 @@ holdout 66.7% < 90%. Улучшение ответов возможно толь
 До: `TypeError: unexpected keyword argument 'knowledge_source'` и
 `ERR_MODULE_NOT_FOUND: health.ts` — оба теста падали.
 После: 60 Python-тестов, 4 node-теста, typecheck — зелёные.
+
+## FIX-P1-4. Ответ читается из результата действия
+
+Изменено:
+
+- `panel/src/transport/actionResult.ts`: `findMessageInResult` выбирает из структуры
+  результата узел, принадлежащий `concept_ui_assistant_message`.
+- `ScMemoryTransport.ask()`: после завершения действия читает
+  `action → nrel_result → структура → сообщение` через `helper.getResult()`
+  и `readMessage()`, больше не вызывая `history()` после каждого ответа.
+- В keynodes панели добавлены `concept_ui_assistant_message`, `nrel_ui_llm_model`,
+  `nrel_ui_prompt_version`, `nrel_ui_knowledge_source`.
+- Тест `actionResult.test.ts` на выбор сообщения; E2E в sc-режиме зелёный
+  (чипы и текст из результата).
+
+До: `ERR_MODULE_NOT_FOUND: actionResult.ts`, тест падал. После: 6 node-тестов,
+typecheck и E2E (`indicator_ms=81`, чипы, таймер 1,0 с, отмена) зелёные.
