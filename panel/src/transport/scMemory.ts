@@ -21,6 +21,7 @@ import {
   ScType,
 } from 'ts-sc-client'
 
+import { healthFromMessages } from './health'
 import type {
   AssistantHealth,
   AssistantMessage,
@@ -68,6 +69,9 @@ interface Keynodes {
   nrelTime: ScAddr
   nrelState: ScAddr
   nrelSource: ScAddr
+  nrelModel: ScAddr
+  nrelPromptVersion: ScAddr
+  nrelKnowledgeSource: ScAddr
 }
 
 export class ScMemoryTransport implements AssistantTransport {
@@ -77,6 +81,7 @@ export class ScMemoryTransport implements AssistantTransport {
   private readonly helper: ScHelper
   private keynodesCache: Keynodes | null = null
   private active: ActiveRequest | null = null
+  private dialogId: string | null = null
 
   constructor(client: ScClient) {
     this.client = client
@@ -91,13 +96,20 @@ export class ScMemoryTransport implements AssistantTransport {
     } catch {
       connected = false
     }
+    let derived = healthFromMessages([])
+    if (connected && this.dialogId) {
+      try {
+        derived = healthFromMessages(await this.history(this.dialogId))
+      } catch {
+        // История может быть ещё пустой — остаёмся в unknown.
+      }
+    }
     return {
-      // В sc-режиме панель не знает модель напрямую: её указывает агент в ответе.
-      llm: { backend: 'sc-memory', model: 'sc-агент', reachable: connected },
+      llm: { backend: 'sc-memory', model: derived.model, reachable: connected },
       kb: {
         connected,
-        knowledgeSource: 'kb',
-        packVersion: '',
+        knowledgeSource: derived.knowledgeSource,
+        packVersion: derived.packVersion,
       },
     }
   }
@@ -106,7 +118,8 @@ export class ScMemoryTransport implements AssistantTransport {
     const k = await this.keynodes()
     const dialog = await this.createNode()
     await this.instantiate(k.dialog, dialog)
-    return String(dialog.value)
+    this.dialogId = String(dialog.value)
+    return this.dialogId
   }
 
   async history(dialogId: string): Promise<AssistantMessage[]> {
@@ -149,6 +162,7 @@ export class ScMemoryTransport implements AssistantTransport {
       dialog = await this.createNode()
       await this.instantiate(k.dialog, dialog)
     }
+    this.dialogId = String(dialog.value)
 
     const action = await this.createAction(k, dialog, question)
     const active: ActiveRequest = { action, cancelled: false }
@@ -318,6 +332,11 @@ export class ScMemoryTransport implements AssistantTransport {
     const stateValue = await this.linkValue(message, k.nrelState)
     const state = toState(stateValue)
     const createdAt = (await this.linkValue(message, k.nrelTime)) ?? ''
+    const model = await this.linkValue(message, k.nrelModel)
+    const promptVersion = await this.linkValue(message, k.nrelPromptVersion)
+    const rawSource = await this.linkValue(message, k.nrelKnowledgeSource)
+    const knowledgeSource =
+      rawSource === 'kb' || rawSource === 'fallback' ? rawSource : 'unknown'
 
     return {
       id: String(message.value),
@@ -325,6 +344,9 @@ export class ScMemoryTransport implements AssistantTransport {
       text,
       state,
       createdAt,
+      model,
+      promptVersion: promptVersion ?? undefined,
+      knowledgeSource,
       sources: await this.sources(message, k),
       error: state === STATUS_ERROR ? text : undefined,
       scAddr: message.value,
@@ -413,6 +435,9 @@ export class ScMemoryTransport implements AssistantTransport {
       'nrel_ui_message_time',
       'nrel_ui_message_state',
       'nrel_ui_answer_source',
+      'nrel_ui_llm_model',
+      'nrel_ui_prompt_version',
+      'nrel_ui_knowledge_source',
     ] as const
 
     // Невалидный тип = поиск без создания. С валидным типом resolveKeynodes
@@ -447,6 +472,9 @@ export class ScMemoryTransport implements AssistantTransport {
       nrelTime: resolved.nrel_ui_message_time,
       nrelState: resolved.nrel_ui_message_state,
       nrelSource: resolved.nrel_ui_answer_source,
+      nrelModel: resolved.nrel_ui_llm_model,
+      nrelPromptVersion: resolved.nrel_ui_prompt_version,
+      nrelKnowledgeSource: resolved.nrel_ui_knowledge_source,
     }
     return this.keynodesCache
   }

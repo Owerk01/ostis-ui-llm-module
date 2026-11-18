@@ -164,3 +164,25 @@ holdout 66.7% < 90%. Улучшение ответов возможно толь
 До: оба теста падали (`sources == []`). После: 14 тестов валидатора/оснований
 зелёные, `make test` — 59 passed. `dialog_agent._source_addrs` уже использует
 `ScKeynodes.get()` без префикса для knowledge-узлов.
+
+## FIX-P1-3. Fallback и модель видны в боевом режиме
+
+Изменено:
+
+- `dialog_store`: каждое assistant-сообщение получает
+  `nrel_ui_knowledge_source` → `kb` / `fallback` / `unknown`; `read_history`
+  возвращает поле `knowledgeSource`.
+- `dialog_agent`: передаёт `result.knowledge_source` при записи ответа.
+- `panel/src/transport/types.ts`: `knowledgeSource` — `'kb' | 'fallback' | 'unknown'`,
+  `llm.model` — `string | null`; `AssistantMessage` несёт модель, версию промпта
+  и источник.
+- `ScMemoryTransport.health()` больше не хардкодит `kb` и `sc-агент`: значения
+  берутся из последнего assistant-сообщения, до первого ответа — `unknown`/null.
+- `StatusBar`: при `unknown` — «Источник знаний: уточняется», при null-модели —
+  «через sc-агент»; баннер fallback — только при явном `fallback`.
+- Тесты: `test_append_assistant_message_writes_knowledge_source` и
+  `health.test.ts` (node:test, мок сообщений), контракт обновлён.
+
+До: `TypeError: unexpected keyword argument 'knowledge_source'` и
+`ERR_MODULE_NOT_FOUND: health.ts` — оба теста падали.
+После: 60 Python-тестов, 4 node-теста, typecheck — зелёные.

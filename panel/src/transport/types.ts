@@ -14,20 +14,25 @@ export interface SourceRef {
   scAddr?: number
 }
 
+export type KnowledgeSource = 'kb' | 'fallback' | 'unknown'
+
 export interface AssistantMessage {
   id: string
   role: AssistantRole
   text: string
   state: MessageState
   createdAt: string // ISO-8601
+  model?: string | null
+  promptVersion?: string
+  knowledgeSource?: KnowledgeSource
   sources?: SourceRef[]
   error?: string
   scAddr?: number
 }
 
 export interface AssistantHealth {
-  llm: { backend: string; model: string; reachable: boolean }
-  kb: { connected: boolean; knowledgeSource: 'kb' | 'fallback'; packVersion: string }
+  llm: { backend: string; model: string | null; reachable: boolean }
+  kb: { connected: boolean; knowledgeSource: KnowledgeSource; packVersion: string }
 }
 
 export interface AssistantTransport {

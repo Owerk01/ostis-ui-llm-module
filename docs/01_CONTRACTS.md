@@ -138,6 +138,7 @@
 | `nrel_ui_message_state` | `done` / `error` / `cancelled` |
 | `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `<версия промпта>\|pack:<ISO>` (сейчас `v3`) |
 | `nrel_ui_answer_source` | ответ → узел-основание |
+| `nrel_ui_knowledge_source` (существующее) | ответ → sc-link `kb` / `fallback` / `unknown` |
 
 Новых отношений для текста не вводится: используется существующее `nrel_ui_value`.
 
@@ -177,10 +178,16 @@
 
 ### /health в режиме sc-memory
 
-`GET /health` доступен только в `direct-http`. В sc-режиме панель показывает
-источник знаний из собственного резолва ключевых узлов: `Знания из БЗ`.
-Поля `kb.connected`, `kb.knowledgeSource`, `kb.partial`, `kb.missing` в
-`KnowledgeService.health()` заполняются из `KbStatus`.
+`GET /health` доступен только в `direct-http`. В sc-режиме `ScMemoryTransport.health()`
+определяет `connected` по наличию ключевых узлов, а `knowledgeSource` и `model` —
+из последнего assistant-сообщения диалога. До первого ответа они равны
+`'unknown'` и `null` (в панели: «Источник знаний: уточняется», «через sc-агент»).
+Баннер локальной копии показывается только при явном `fallback`.
+
+`AssistantHealth.kb.knowledgeSource` принимает `'kb' | 'fallback' | 'unknown'`,
+`AssistantHealth.llm.model` — `string | null`. Поля `kb.connected`,
+`kb.knowledgeSource`, `kb.partial`, `kb.missing` в `KnowledgeService.health()`
+заполняются из `KbStatus`.
 
 ## Качество и guard идентификаторов
 

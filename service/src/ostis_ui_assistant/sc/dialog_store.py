@@ -69,6 +69,7 @@ def _append_message(
     model: str | None = None,
     prompt_version: str | None = None,
     sources: list[ScAddr] | None = None,
+    knowledge_source: str | None = None,
 ) -> ScAddr:
     message = generate_node(sc_type.CONST_NODE)
     generate_connector(sc_type.CONST_PERM_POS_ARC, ScKeynodes[role_class], message)
@@ -101,6 +102,14 @@ def _append_message(
             version_link,
             ScKeynodes["nrel_ui_prompt_version"],
         )
+    if knowledge_source:
+        source_link = generate_link(knowledge_source)
+        generate_binary_relation(
+            sc_type.CONST_COMMON_ARC,
+            message,
+            source_link,
+            ScKeynodes["nrel_ui_knowledge_source"],
+        )
     for source in sources or []:
         if source.is_valid():
             generate_binary_relation(
@@ -128,6 +137,7 @@ def append_assistant_message(
     prompt_version: str,
     sources: list[ScAddr] | None = None,
     state: str = kn.STATUS_DONE,
+    knowledge_source: str = "unknown",
 ) -> ScAddr:
     return _append_message(
         dialog,
@@ -137,11 +147,18 @@ def append_assistant_message(
         model=model,
         prompt_version=prompt_version,
         sources=sources,
+        knowledge_source=knowledge_source,
     )
 
 
 def append_error_message(dialog: ScAddr, reason: str) -> ScAddr:
-    return _append_message(dialog, reason, "concept_ui_assistant_message", kn.STATUS_ERROR)
+    return _append_message(
+        dialog,
+        reason,
+        "concept_ui_assistant_message",
+        kn.STATUS_ERROR,
+        knowledge_source="unknown",
+    )
 
 
 def read_state(message: ScAddr) -> str | None:
@@ -225,6 +242,7 @@ def read_history(dialog: ScAddr) -> list[dict[str, Any]]:
             "createdAt": _link_value(message, "nrel_ui_message_time") or "",
             "model": _link_value(message, "nrel_ui_llm_model"),
             "promptVersion": _link_value(message, "nrel_ui_prompt_version"),
+            "knowledgeSource": _link_value(message, "nrel_ui_knowledge_source"),
             "sources": _sources(message),
         }
         messages.append((index, item))

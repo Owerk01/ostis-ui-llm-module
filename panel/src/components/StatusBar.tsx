@@ -20,8 +20,9 @@ export function StatusBar({
   onCancel,
 }: StatusBarProps) {
   const reachable = health?.llm.reachable ?? false
-  const source = health?.kb.knowledgeSource ?? 'fallback'
+  const source = health?.kb.knowledgeSource ?? 'unknown'
   const scMode = health?.llm.backend === 'sc-memory'
+  const model = health?.llm.model
 
   return (
     <div className={styles['oaa-status']} role="status">
@@ -33,12 +34,15 @@ export function StatusBar({
         {health ? (
           scMode ? (
             <>
-              LLM: <span className={styles['oaa-strong']}>через sc-агент</span>
+              LLM:{' '}
+              <span className={styles['oaa-strong']}>
+                {model ?? 'через sc-агент'}
+              </span>
               {!reachable ? ' — БЗ недоступна' : ''}
             </>
           ) : (
             <>
-              LLM: <span className={styles['oaa-strong']}>{health.llm.model}</span>
+              LLM: <span className={styles['oaa-strong']}>{model ?? 'неизвестна'}</span>
               {!reachable ? ' — недоступна' : ''}
             </>
           )
@@ -53,7 +57,11 @@ export function StatusBar({
         ·
       </span>
       <span className={styles['oaa-item']}>
-        {source === 'kb' ? 'Знания из БЗ' : 'Знания из локальной копии'}
+        {source === 'unknown'
+          ? 'Источник знаний: уточняется'
+          : source === 'kb'
+            ? 'Знания из БЗ'
+            : 'Знания из локальной копии'}
       </span>
 
       {health && health.kb.packVersion ? (

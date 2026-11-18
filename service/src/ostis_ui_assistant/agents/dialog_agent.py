@@ -85,6 +85,7 @@ class UiDialogAgent(ScAgentClassic):
             result.model,
             f"{result.prompt_version}|pack:{result.pack_version}",
             source_addrs,
+            knowledge_source=result.knowledge_source,
         )
         generate_action_result(
             action, generate_link(result.text), message, *source_addrs
