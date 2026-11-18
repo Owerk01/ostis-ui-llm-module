@@ -304,5 +304,14 @@ typecheck и `make test` зелёные.
 До: первый тест падал (`find_unknown` вернул `['rrel_11']`). После: 71
 Python-тест зелёный.
 
+## FIX-P2-7. Калибровка оценки токенов
+
+Изменено: модуль `tokens.near_context_limit` (>80% `LLM_NUM_CTX` → WARN), поле
+`token_budget_warning` в `AnswerResult` и JSONL, фактические prompt tokens
+в отчёте eval рядом с оценкой `len/3`. Тест `test_tokens.py` добавлен.
+
+До: `ModuleNotFoundError: ostis_ui_assistant.knowledge.tokens`. После: 72
+Python-теста, `make test` зелёный.
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.

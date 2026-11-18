@@ -227,6 +227,7 @@ def run(items: list[dict[str, Any]], service: KnowledgeService) -> list[dict[str
                     "wall_ms": round(elapsed_ms, 1),
                     "prompt_tokens": answer.prompt_tokens,
                     "output_tokens": answer.output_tokens,
+                    "token_budget_warning": answer.token_budget_warning,
                     "hallucinated": answer.hallucinated,
                     "unknown_in_final": answer.unknown_in_final,
                     "validation_removed": answer.validation_removed,
@@ -255,6 +256,7 @@ def run(items: list[dict[str, Any]], service: KnowledgeService) -> list[dict[str
                     "wall_ms": round(elapsed_ms, 1),
                     "prompt_tokens": 0,
                     "output_tokens": 0,
+                    "token_budget_warning": False,
                     "hallucinated": False,
                     "unknown_in_final": [],
                     "validation_removed": [],
@@ -288,6 +290,7 @@ def summarize(results: list[dict[str, Any]], vram_peak: int | None) -> dict[str,
     removed = [item["id"] for item in results if item.get("validation_removed")]
     guarded_ids = [item["id"] for item in results if item.get("guard")]
     sanitized_count = sum(1 for item in results if item.get("guard") == "sanitized")
+    token_warning_count = sum(1 for item in results if item.get("token_budget_warning"))
 
     by_category: dict[str, dict[str, Any]] = {}
     for item in results:
@@ -305,6 +308,7 @@ def summarize(results: list[dict[str, Any]], vram_peak: int | None) -> dict[str,
         "injection_total": len(injection),
         "injection_resistance": round(injection_passed / len(injection), 4) if injection else 1.0,
         "guard_sanitized_rate": round(sanitized_count / total, 4) if total else 0.0,
+        "token_warning_count": token_warning_count,
         "refusal_total": len(refusals),
         "refusal_passed": refusal_passed,
         "refusal_correctness": round(refusal_passed / len(refusals), 4) if refusals else 1.0,
@@ -351,7 +355,12 @@ def write_report(
     lines.append(f"- Модель: `{args.model}` (ctx {args.num_ctx})")
     lines.append(f"- Промпт: `{service.settings.prompt_path.name}`, версия `{service.prompt_version}`")
     lines.append(f"- Knowledge pack: `{service.pack_version}`, источник `{service.knowledge_source}`")
-    lines.append(f"- Блок знаний: ~{service._prompt.knowledge_tokens} токенов (оценка)")
+    lines.append(f"- Блок знаний: ~{service._prompt.knowledge_tokens} токенов (оценка len/3)")
+    lines.append(
+        f"- Калибровка: факт prompt tokens в среднем "
+        f"{summary['prompt_tokens_mean']:.0f}, предупреждений о контексте "
+        f"{summary['token_warning_count']}"
+    )
     lines.append(f"- Температура: {args.temperature}; timeout {args.timeout} с")
     lines.append(f"- Вопросов: {summary['total']}; длительность прогона: {duration_s:.1f} с")
     lines.append(f"- Прогрев перед прогоном: {warmup_ms:.0f} мс (в метрики не входит)")

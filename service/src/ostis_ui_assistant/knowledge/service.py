@@ -15,6 +15,7 @@ from ..config import Settings
 from ..llm.base import LLMBackend, LLMError, LLMStats, LLMTimeout, create_backend
 from .identifiers import ALL_IDENTIFIERS, ENVIRONMENT_IDENTIFIERS, PROPERTY_KEYS
 from .kb_reader import KbStatus, close as close_kb, load_pack_from_kb
+from .tokens import near_context_limit
 from .render import (
     PromptBuildResult,
     build_messages,
@@ -53,6 +54,7 @@ class AnswerResult:
     hallucinated: bool = False
     repair_ms: float = 0.0
     tokens_unavailable: bool = False
+    token_budget_warning: bool = False
     unknown_in_final: list[str] = field(default_factory=list)
     knowledge_source: str = "fallback"
     guard: str = ""
@@ -210,6 +212,15 @@ class KnowledgeService:
 
         raw_text = "".join(chunks).strip()
         stats: LLMStats = self.backend.last_stats
+        token_warning = near_context_limit(stats.prompt_tokens, self.settings.llm_num_ctx)
+        if token_warning:
+            logger.warning(
+                "Фактический промпт %s токенов занимает >80%% контекста %s; "
+                "оценка рендера — %s",
+                stats.prompt_tokens,
+                self.settings.llm_num_ctx,
+                built.knowledge_tokens,
+            )
         repair_times: list[float] = []
 
         def repair(text: str, unknown: list[str]) -> str:
@@ -238,6 +249,7 @@ class KnowledgeService:
             hallucinated=validation.hallucinated,
             repair_ms=round(sum(repair_times), 1),
             tokens_unavailable=stats.tokens_unavailable,
+            token_budget_warning=token_warning,
             unknown_in_final=find_unknown(validation.text),
             knowledge_source=self.knowledge_source,
             guard=guard,
@@ -259,6 +271,7 @@ class KnowledgeService:
             "prompt_tokens": result.prompt_tokens,
             "output_tokens": result.output_tokens,
             "tokens_unavailable": result.tokens_unavailable,
+            "token_budget_warning": result.token_budget_warning,
             "validation_removed": result.validation_removed,
             "knowledge_source": result.knowledge_source,
             "prompt_estimated_tokens": built.system_tokens,
