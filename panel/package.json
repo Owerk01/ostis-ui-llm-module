@@ -24,7 +24,7 @@
     "build": "tsc --noEmit && vite build",
     "build:lib": "vite build --mode lib && tsc -p tsconfig.lib.json",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/utils/formatElapsed.test.ts src/transport/health.test.ts src/transport/actionResult.test.ts src/retry.test.ts src/libraryEnvironment.test.ts",
+    "test": "node --experimental-strip-types --test src/utils/formatElapsed.test.ts src/transport/health.test.ts src/transport/actionResult.test.ts src/transport/dialogId.test.ts src/retry.test.ts src/libraryEnvironment.test.ts",
     "preview": "vite preview"
   },
   "peerDependencies": {

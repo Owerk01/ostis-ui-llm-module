@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import uuid
 from datetime import datetime, timezone
 from typing import Any
 
@@ -39,7 +40,16 @@ def _now_iso() -> str:
 def create_dialog() -> ScAddr:
     dialog = generate_node(sc_type.CONST_NODE)
     generate_connector(sc_type.CONST_PERM_POS_ARC, ScKeynodes["concept_ui_dialog"], dialog)
+    # Стабильный идентификатор не зависит от ScAddr и переживает пересборку БЗ.
+    id_link = generate_link(f"dialog-{uuid.uuid4().hex[:12]}")
+    generate_binary_relation(
+        sc_type.CONST_COMMON_ARC, dialog, id_link, ScKeynodes["nrel_ui_id"]
+    )
     return dialog
+
+
+def read_dialog_id(dialog: ScAddr) -> str | None:
+    return _link_value(dialog, "nrel_ui_id")
 
 
 def ensure_dialog(dialog: ScAddr | None) -> ScAddr:

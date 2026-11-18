@@ -22,6 +22,7 @@ import {
 } from 'ts-sc-client'
 
 import { findMessageInResult, type ResultRow } from './actionResult'
+import { isStableDialogId, newDialogId } from './dialogId'
 import { healthFromMessages } from './health'
 import type {
   AssistantHealth,
@@ -74,6 +75,7 @@ interface Keynodes {
   nrelModel: ScAddr
   nrelPromptVersion: ScAddr
   nrelKnowledgeSource: ScAddr
+  nrelUiId: ScAddr
 }
 
 export class ScMemoryTransport implements AssistantTransport {
@@ -118,17 +120,24 @@ export class ScMemoryTransport implements AssistantTransport {
 
   async ensureDialog(): Promise<string> {
     const k = await this.keynodes()
+    if (this.dialogId) {
+      const existing = await this.findDialogById(this.dialogId, k)
+      if (existing) return this.dialogId
+    }
+
     const dialog = await this.createNode()
     await this.instantiate(k.dialog, dialog)
-    this.dialogId = String(dialog.value)
-    return this.dialogId
+    const id = newDialogId()
+    await this.relateNonRole(dialog, await this.createLink(id), k.nrelUiId)
+    this.dialogId = id
+    return id
   }
 
   async history(dialogId: string): Promise<AssistantMessage[]> {
-    const dialog = this.toAddr(dialogId)
-    if (!dialog.isValid()) return []
-
     const k = await this.keynodes()
+    const dialog = await this.resolveDialog(dialogId, k)
+    if (!dialog) return []
+
     const template = new ScTemplate()
     template.quintuple(
       dialog,
@@ -159,12 +168,17 @@ export class ScMemoryTransport implements AssistantTransport {
     if (this.active) throw new Error('Предыдущий запрос ещё выполняется')
 
     const k = await this.keynodes()
-    let dialog = this.toAddr(dialogId)
-    if (!dialog.isValid()) {
+    let dialog = await this.resolveDialog(dialogId, k)
+    if (!dialog) {
+      // Неизвестный id не должен читать чужой узел — создаём новый диалог.
       dialog = await this.createNode()
       await this.instantiate(k.dialog, dialog)
+      const id = newDialogId()
+      await this.relateNonRole(dialog, await this.createLink(id), k.nrelUiId)
+      this.dialogId = id
+    } else {
+      this.dialogId = dialogId
     }
-    this.dialogId = String(dialog.value)
 
     const action = await this.createAction(k, dialog, question)
     const active: ActiveRequest = { action, cancelled: false }
@@ -431,9 +445,33 @@ export class ScMemoryTransport implements AssistantTransport {
 
   // --- служебное ---
 
-  private toAddr(dialogId: string): ScAddr {
-    const value = Number(dialogId)
-    return new ScAddr(Number.isFinite(value) ? value : 0)
+  private async findDialogById(id: string, k: Keynodes): Promise<ScAddr | null> {
+    if (!isStableDialogId(id)) return null
+    const groups = await this.client.searchLinksByContents([id])
+    for (const link of groups.flat()) {
+      const template = new ScTemplate()
+      template.quintuple(
+        [ScType.VarNode, '_dialog'],
+        ScType.VarCommonArc,
+        link,
+        ScType.VarPermPosArc,
+        k.nrelUiId,
+      )
+      const rows = await this.client.searchByTemplate(template)
+      if (rows.length) return rows[0].get('_dialog')
+    }
+    return null
+  }
+
+  private async resolveDialog(dialogId: string, k: Keynodes): Promise<ScAddr | null> {
+    return this.findDialogById(dialogId, k)
+  }
+
+  private async relateNonRole(source: ScAddr, target: ScAddr, relation: ScAddr): Promise<void> {
+    const construction = new ScConstruction()
+    construction.generateConnector(ScType.ConstCommonArc, source, target, '_arc')
+    construction.generateConnector(ScType.ConstPermPosArc, relation, '_arc')
+    await this.client.generateElements(construction)
   }
 
   private async keynodes(): Promise<Keynodes> {
@@ -457,6 +495,7 @@ export class ScMemoryTransport implements AssistantTransport {
       'nrel_ui_llm_model',
       'nrel_ui_prompt_version',
       'nrel_ui_knowledge_source',
+      'nrel_ui_id',
     ] as const
 
     // Невалидный тип = поиск без создания. С валидным типом resolveKeynodes
@@ -495,6 +534,7 @@ export class ScMemoryTransport implements AssistantTransport {
       nrelModel: resolved.nrel_ui_llm_model,
       nrelPromptVersion: resolved.nrel_ui_prompt_version,
       nrelKnowledgeSource: resolved.nrel_ui_knowledge_source,
+      nrelUiId: resolved.nrel_ui_id,
     }
     return this.keynodesCache
   }

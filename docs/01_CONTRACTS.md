@@ -134,6 +134,7 @@
 | `concept_ui_user_message` / `concept_ui_assistant_message` | сообщения (⊂ `concept_ui_dialog_message`) |
 | `nrel_ui_dialog_message` + `rrel_1..N` | диалог → сообщение, порядок в `rrel` |
 | `nrel_ui_value` (существующее) | текст сообщения в sc-link |
+| `nrel_ui_id` (существующее) | стабильный id диалога `dialog-<hex>` в sc-link |
 | `nrel_ui_message_time` | ISO-8601 UTC |
 | `nrel_ui_message_state` | `done` / `error` / `cancelled` |
 | `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `<версия промпта>\|pack:<ISO>` (сейчас `v3`) |
@@ -172,7 +173,9 @@
 
 `panel/src/transport/scMemory.ts` (`ScMemoryTransport`):
 
-1. `ensureDialog()` создаёт узел `concept_ui_dialog`.
+1. `ensureDialog()` создаёт узел `concept_ui_dialog` и пишет ему `nrel_ui_id`
+   вида `dialog-<hex>`; `dialogId` в панели — эта строка, а не сырой `ScAddr`.
+   При невалидном id создаётся новый диалог, чужой узел не читается.
 2. `ask()` создаёт действие, `rrel_1` (текст), `rrel_2` (диалог),
    затем `action_initiated`.
 3. Ожидание — подписка `AfterGenerateIncomingArc` на узел действия плюс
@@ -250,7 +253,7 @@ Dev и holdout публикуются раздельно; warm/cold latency за
 | Мягкая отмена в sc-memory | у панели нет канала, чтобы прервать LLM внутри агента | жёсткая отмена через маркер в БЗ |
 | `on_event` блокирует поток sc-событий до ~20 с | синхронный обработчик py-sc-kpm | очередь воркеров |
 | Нет стриминга в sc-memory | семантика ответа живёт в БЗ, канал отдельный | отдельный SSE-канал |
-| Один диалог на вкладку | `ensureDialog()` создаёт новый узел без `dialogId` | редактор передаёт `dialogId` (prop уже есть) |
+| Один диалог на вкладку | `ensureDialog()` создаёт новый узел без `dialogId` | редактор передаёт стабильный `dialogId` (prop уже есть) |
 | Один активный запрос на транспорт | защита от гонок UI | очередь воркеров |
 | Повтор unsuccessful-ответа | создаёт **новый полный ход**: пользовательское сообщение добавляется и в БЗ, и локально; прежний ход остаётся в истории | — |
 | Профиль C `gemma4:e4b` не принят | refusal 83.3% < 90% | рабочий A, альтернатива B |

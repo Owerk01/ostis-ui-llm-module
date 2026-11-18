@@ -254,5 +254,19 @@ typecheck и `make test` зелёные.
 До: `not ok 1 - library code does not require window timers`. После: 8 node-тестов
 и typecheck зелёные. `window.localStorage` остался только в dev-стенде.
 
+## FIX-P2-2. Стабильный идентификатор диалога
+
+Изменено:
+
+- `dialog_store.create_dialog()` пишет `nrel_ui_id = dialog-<hex>`; добавлен
+  `read_dialog_id()`.
+- `ScMemoryTransport` ищет диалог по значению `nrel_ui_id`, а не по числовому
+  `ScAddr`; невалидный id приводит к созданию нового диалога.
+- Тесты `test_dialog_stable_id.py` и `dialogId.test.ts`, контракт обновлён.
+
+До: первый тест падал (`relations == []`), второй — `ERR_MODULE_NOT_FOUND`.
+После: 11 node-тестов, 65 Python-тестов, typecheck и E2E зелёные
+(индикатор 84 мс, чипы, отказ, отмена).
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.
