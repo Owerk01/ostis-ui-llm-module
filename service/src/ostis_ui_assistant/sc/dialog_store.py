@@ -48,16 +48,30 @@ def ensure_dialog(dialog: ScAddr | None) -> ScAddr:
     return create_dialog()
 
 
+# Счётчик порядковых номеров живёт в памяти процесса: полный поиск по БЗ
+# делается только при первом обращении к диалогу.
+_message_counters: dict[int, int] = {}
+
+
+def reset_counters() -> None:
+    """Сброс счётчиков (используется тестами и при смене БЗ)."""
+    _message_counters.clear()
+
+
 def _message_index(dialog: ScAddr) -> int:
-    templ = ScTemplate()
-    templ.quintuple(
-        dialog,
-        sc_type.VAR_COMMON_ARC,
-        sc_type.VAR_NODE >> "_message",
-        sc_type.VAR_PERM_POS_ARC,
-        ScKeynodes["nrel_ui_dialog_message"],
-    )
-    return len(search_by_template(templ)) + 1
+    key = dialog.value
+    if key not in _message_counters:
+        templ = ScTemplate()
+        templ.quintuple(
+            dialog,
+            sc_type.VAR_COMMON_ARC,
+            sc_type.VAR_NODE >> "_message",
+            sc_type.VAR_PERM_POS_ARC,
+            ScKeynodes["nrel_ui_dialog_message"],
+        )
+        _message_counters[key] = len(search_by_template(templ))
+    _message_counters[key] += 1
+    return _message_counters[key]
 
 
 def _append_message(
@@ -219,36 +233,132 @@ def _sources(message: ScAddr) -> list[dict[str, str]]:
     return result
 
 
-def read_history(dialog: ScAddr) -> list[dict[str, Any]]:
+def _bulk_link_values(dialog: ScAddr, relation: str) -> dict[int, str]:
+    """Все значения одного отношения для всех сообщений диалога одним запросом."""
     templ = ScTemplate()
     templ.quintuple(
         dialog,
-        sc_type.VAR_COMMON_ARC >> "_arc",
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE >> "_message",
+        sc_type.VAR_PERM_POS_ARC,
+        ScKeynodes["nrel_ui_dialog_message"],
+    )
+    templ.quintuple(
+        "_message",
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE_LINK >> "_link",
+        sc_type.VAR_PERM_POS_ARC,
+        ScKeynodes[relation],
+    )
+    result: dict[int, str] = {}
+    for row in search_by_template(templ):
+        result[row.get("_message").value] = str(get_link_content_data(row.get("_link")))
+    return result
+
+
+def _bulk_roles() -> dict[int, str]:
+    result: dict[int, str] = {}
+    for class_idtf, role in (
+        ("concept_ui_user_message", "user"),
+        ("concept_ui_assistant_message", "assistant"),
+    ):
+        templ = ScTemplate()
+        templ.triple(ScKeynodes[class_idtf], sc_type.VAR_PERM_POS_ARC, sc_type.VAR_NODE >> "_message")
+        for row in search_by_template(templ):
+            result[row.get("_message").value] = role
+    return result
+
+
+def _bulk_ordinals(dialog: ScAddr) -> dict[int, int]:
+    templ = ScTemplate()
+    templ.quintuple(
+        dialog,
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE >> "_message",
+        sc_type.VAR_PERM_POS_ARC,
+        sc_type.VAR_NODE_ROLE >> "_rrel",
+    )
+    result: dict[int, int] = {}
+    for row in search_by_template(templ):
+        idtf = get_element_system_identifier(row.get("_rrel")) or ""
+        try:
+            result[row.get("_message").value] = int(idtf.rsplit("_", 1)[-1])
+        except ValueError:
+            result[row.get("_message").value] = 0
+    return result
+
+
+def _bulk_sources(dialog: ScAddr) -> dict[int, list[dict[str, str]]]:
+    templ = ScTemplate()
+    templ.quintuple(
+        dialog,
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE >> "_message",
+        sc_type.VAR_PERM_POS_ARC,
+        ScKeynodes["nrel_ui_dialog_message"],
+    )
+    templ.quintuple(
+        "_message",
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE >> "_source",
+        sc_type.VAR_PERM_POS_ARC,
+        ScKeynodes["nrel_ui_answer_source"],
+    )
+    result: dict[int, list[dict[str, str]]] = {}
+    for row in search_by_template(templ):
+        addr = row.get("_source")
+        idtf = get_element_system_identifier(addr)
+        if idtf:
+            result.setdefault(row.get("_message").value, []).append(
+                {"idtf": idtf, "scAddr": addr.value}
+            )
+    return result
+
+
+def read_history(dialog: ScAddr) -> list[dict[str, Any]]:
+    """Читает историю пакетно: число запросов не зависит от числа сообщений."""
+    templ = ScTemplate()
+    templ.quintuple(
+        dialog,
+        sc_type.VAR_COMMON_ARC,
         sc_type.VAR_NODE >> "_message",
         sc_type.VAR_PERM_POS_ARC,
         ScKeynodes["nrel_ui_dialog_message"],
     )
     rows = search_by_template(templ)
+    messages = [row.get("_message") for row in rows]
 
-    messages: list[tuple[int, dict[str, Any]]] = []
-    for row in rows:
-        message = row.get("_message")
-        index = _ordinal(dialog, message)
-        item = {
-            "scAddr": message.value,
-            "role": _role(message),
-            "text": _link_value(message, "nrel_ui_value") or "",
-            "state": _link_value(message, "nrel_ui_message_state") or kn.STATUS_DONE,
-            "createdAt": _link_value(message, "nrel_ui_message_time") or "",
-            "model": _link_value(message, "nrel_ui_llm_model"),
-            "promptVersion": _link_value(message, "nrel_ui_prompt_version"),
-            "knowledgeSource": _link_value(message, "nrel_ui_knowledge_source"),
-            "sources": _sources(message),
-        }
-        messages.append((index, item))
+    texts = _bulk_link_values(dialog, "nrel_ui_value")
+    states = _bulk_link_values(dialog, "nrel_ui_message_state")
+    times = _bulk_link_values(dialog, "nrel_ui_message_time")
+    models = _bulk_link_values(dialog, "nrel_ui_llm_model")
+    versions = _bulk_link_values(dialog, "nrel_ui_prompt_version")
+    sources_map = _bulk_link_values(dialog, "nrel_ui_knowledge_source")
+    roles = _bulk_roles()
+    ordinals = _bulk_ordinals(dialog)
+    sources = _bulk_sources(dialog)
 
-    messages.sort(key=lambda pair: pair[0])
-    return [item for _, item in messages]
+    items: list[tuple[int, dict[str, Any]]] = []
+    for message in messages:
+        key = message.value
+        items.append(
+            (
+                ordinals.get(key, 0),
+                {
+                    "scAddr": key,
+                    "role": roles.get(key, "assistant"),
+                    "text": texts.get(key, ""),
+                    "state": states.get(key) or kn.STATUS_DONE,
+                    "createdAt": times.get(key, ""),
+                    "model": models.get(key),
+                    "promptVersion": versions.get(key),
+                    "knowledgeSource": sources_map.get(key),
+                    "sources": sources.get(key, []),
+                },
+            )
+        )
+    items.sort(key=lambda pair: pair[0])
+    return [item for _, item in items]
 
 
 def _ordinal(dialog: ScAddr, message: ScAddr) -> int:
