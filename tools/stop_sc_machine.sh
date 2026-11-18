@@ -3,7 +3,7 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-PID_FILE="$ROOT/.runtime/sc-machine.pid"
+PID_FILE="${SC_PID_FILE:-$ROOT/.runtime/sc-machine.pid}"
 
 if [ ! -f "$PID_FILE" ]; then
   echo "sc-machine не запущена (pid-файла нет)"

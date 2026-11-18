@@ -5,9 +5,9 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-PID_FILE="$ROOT/.runtime/sc-machine.pid"
+PID_FILE="${SC_PID_FILE:-$ROOT/.runtime/sc-machine.pid}"
 BIN="$ROOT/.runtime/sc-machine/bin/sc-machine"
-STORAGE="$ROOT/.runtime/kb.bin"
+STORAGE="${SC_STORAGE:-$ROOT/.runtime/kb.bin}"
 CONFIG="$ROOT/platform/sc-machine.ini"
 LOG="$ROOT/service/logs/sc-machine.stdout.log"
 

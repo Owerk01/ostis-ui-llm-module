@@ -415,12 +415,23 @@ export class ScMemoryTransport implements AssistantTransport {
       'nrel_ui_answer_source',
     ] as const
 
+    // Невалидный тип = поиск без создания. С валидным типом resolveKeynodes
+    // создал бы отсутствующий узел в БЗ, чего read-путь делать не должен.
+    const searchOnly = new ScType()
     const resolved = await this.client.resolveKeynodes([
-      ...classes.map((id) => ({ id, type: ScType.ConstNodeClass })),
-      ...relations.map((id) => ({ id, type: ScType.ConstNodeNonRole })),
-      { id: 'rrel_1', type: ScType.ConstNodeRole },
-      { id: 'rrel_2', type: ScType.ConstNodeRole },
+      ...classes.map((id) => ({ id, type: searchOnly })),
+      ...relations.map((id) => ({ id, type: searchOnly })),
+      { id: 'rrel_1', type: searchOnly },
+      { id: 'rrel_2', type: searchOnly },
     ])
+    const missing = Object.entries(resolved)
+      .filter(([, addr]) => !addr.isValid())
+      .map(([id]) => id)
+    if (missing.length) {
+      throw new Error(
+        `Схема ассистента не загружена в БЗ: ${missing.join(', ')}. Выполните make kb-load`,
+      )
+    }
 
     this.keynodesCache = {
       dialog: resolved.concept_ui_dialog,

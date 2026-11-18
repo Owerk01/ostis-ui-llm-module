@@ -4,7 +4,6 @@ from __future__ import annotations
 
 import logging
 
-from sc_client.constants import sc_type
 from sc_client.models import ScAddr
 from sc_kpm import ScAgentClassic, ScKeynodes, ScResult
 from sc_kpm.utils import generate_link, get_link_content_data
@@ -15,6 +14,7 @@ from sc_kpm.utils.action_utils import (
     get_action_result,
 )
 
+from ..knowledge.identifiers import PROPERTY_KEYS
 from ..knowledge.service import Cancelled, KnowledgeService
 from ..llm.base import LLMTimeout, LLMUnavailable
 from ..sc import dialog_store
@@ -105,8 +105,9 @@ class UiDialogAgent(ScAgentClassic):
             idtf = source.get("idtf", "")
             if not idtf:
                 continue
-            addr = ScKeynodes.resolve(idtf, sc_type.UNKNOWN)
-            if not addr.is_valid() and idtf.isidentifier():
-                addr = ScKeynodes.resolve(f"concept_ui_{idtf}", sc_type.UNKNOWN)
-            result.append(addr)
+            addr = ScKeynodes.get(idtf)
+            if not addr.is_valid() and idtf in PROPERTY_KEYS:
+                addr = ScKeynodes.get(f"concept_ui_{idtf}")
+            if addr.is_valid():
+                result.append(addr)
         return result

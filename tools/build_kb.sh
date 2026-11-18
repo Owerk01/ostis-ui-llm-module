@@ -18,6 +18,7 @@ if [ -f "$PID_FILE" ] && kill -0 "$(cat "$PID_FILE")" 2>/dev/null; then
   exit 1
 fi
 
+OUTPUT="${KB_OUTPUT:-$ROOT/.runtime/kb.bin}"
 mkdir -p "$ROOT/.runtime" "$ROOT/service/logs"
-"$SC_BUILDER" -i platform/repo.path -o .runtime/kb.bin --clear
-echo "БЗ собрана: $ROOT/.runtime/kb.bin"
+"$SC_BUILDER" -i "${KB_REPO_PATH:-platform/repo.path}" -o "$OUTPUT" --clear
+echo "БЗ собрана: $OUTPUT"

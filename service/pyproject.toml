@@ -35,4 +35,5 @@ asyncio_default_fixture_loop_scope = "function"
 markers = [
   "llm: требует запущенной LLM (по умолчанию skip)",
   "kb: требует запущенной sc-machine (по умолчанию skip)",
+  "kb_noschema: требует БЗ без схемы UI, собранной через make kb-load-noschema",
 ]

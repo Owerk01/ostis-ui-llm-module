@@ -8,7 +8,7 @@ PY    := $(VENV)/bin/python
 .DEFAULT_GOAL := help
 
 .PHONY: help setup kb machine machine-stop ollama ollama-stop pull venv smoke \
-        up down service panel pack kb-load test eval agent agent-start agent-stop \
+        up down service panel pack kb-load kb-load-noschema test eval agent agent-start agent-stop \
         panel-start panel-stop smoke-action
 
 help:
@@ -30,6 +30,7 @@ help:
 	@echo "  make agent        — запустить sc-агент (ASSISTANT_TRANSPORT=sc-memory)"
 	@echo "  make smoke-action — действие из скрипта: вопрос → ответ в БЗ"
 	@echo "  make kb-load      — пересобрать БЗ с kb/ui_assistant и поднять sc-machine"
+	@echo "  make kb-load-noschema — БЗ без схемы UI для теста read-пути"
 	@echo "Проверки и сборка:"
 	@echo "  make test         — pytest сервиса + typecheck панели"
 	@echo "  make eval         — прогон gold-набора и отчёт (ARGS=\"--label ...\")"
@@ -120,6 +121,14 @@ kb-load: machine-stop
 	@bash tools/build_kb.sh
 	@$(MAKE) machine
 	@$(MAKE) smoke
+
+# БЗ без схемы UI — для интеграционного теста read-пути (FIX-P0-1).
+kb-load-noschema: machine-stop
+	@KB_OUTPUT=$(ROOT)/.runtime/kb-noschema.bin KB_REPO_PATH=platform/repo.path.assistant-only \
+		bash tools/build_kb.sh
+	@SC_STORAGE=$(ROOT)/.runtime/kb-noschema.bin SC_PID_FILE=$(ROOT)/.runtime/sc-machine-noschema.pid \
+		bash tools/start_sc_machine.sh
+	@echo "БЗ без схемы UI готова: .runtime/kb-noschema.bin (порт 8090)"
 
 test: venv
 	@$(PY) tools/check_id_collisions.py

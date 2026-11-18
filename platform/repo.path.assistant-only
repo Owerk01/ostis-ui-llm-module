@@ -1,0 +1,9 @@
+# БЗ только с конструкциями ассистента — без схемы UI редактора.
+# Используется интеграционным тестом FIX-P0-1: read-путь не должен создавать
+# classes concept_ui_button / concept_ui_visible, если схемы нет.
+# Сгенерированный catalog-фрагмент намеренно исключён: он навешивает тексты
+# на существующие классы и в полной БЗ используется вместе со схемой.
+../kb/ui_assistant/ui_dialog.scs
+../kb/ui_assistant/ui_principles.scs
+../kb/ui_assistant/ui_methodology.scs
+../kb/ui_assistant/ui_environment.scs

@@ -83,7 +83,9 @@ def _text(node, rel_idtf: str) -> str | None:
 
 
 def _class_text(sc_class: str) -> str | None:
-    addr = ScKeynodes.resolve(sc_class, sc_type.CONST_NODE_CLASS)
+    # get() ищет по системному идентификатору и НЕ создаёт элемент.
+    # resolve(idtf, sc_type) создал бы чужой класс в БЗ без схемы UI.
+    addr = ScKeynodes.get(sc_class)
     if not addr.is_valid():
         return None
     return _text(addr, TEXT_REL)
