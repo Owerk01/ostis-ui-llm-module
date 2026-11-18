@@ -55,6 +55,9 @@ class OllamaBackend:
             "messages": messages,
         }
 
+        # Сбрасываем статистику до запроса: при ошибке в журнал не попадут
+        # токены предыдущего ответа.
+        self._last_stats = LLMStats()
         started = time.perf_counter()
         try:
             with self._client.stream("POST", self._url, json=payload) as response:

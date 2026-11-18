@@ -51,6 +51,7 @@ class AnswerResult:
     latency_ms: float = 0.0
     validation_removed: list[str] = field(default_factory=list)
     hallucinated: bool = False
+    tokens_unavailable: bool = False
     unknown_in_final: list[str] = field(default_factory=list)
     knowledge_source: str = "fallback"
     guard: str = ""
@@ -203,6 +204,7 @@ class KnowledgeService:
             latency_ms=round(latency_ms, 1),
             validation_removed=validation.removed,
             hallucinated=validation.hallucinated,
+            tokens_unavailable=stats.tokens_unavailable,
             unknown_in_final=find_unknown(validation.text),
             knowledge_source=self.knowledge_source,
             guard=guard,
@@ -222,6 +224,7 @@ class KnowledgeService:
             "latency_ms": result.latency_ms,
             "prompt_tokens": result.prompt_tokens,
             "output_tokens": result.output_tokens,
+            "tokens_unavailable": result.tokens_unavailable,
             "validation_removed": result.validation_removed,
             "knowledge_source": result.knowledge_source,
             "prompt_estimated_tokens": built.system_tokens,

@@ -29,6 +29,7 @@ class LLMStats:
     prompt_tokens: int = 0
     output_tokens: int = 0
     total_ms: float = 0.0
+    tokens_unavailable: bool = False
 
 
 class LLMBackend(Protocol):

@@ -52,19 +52,42 @@ class OpenAIBackend:
     ) -> Iterator[str]:
         from openai import APIConnectionError, APIError, APITimeoutError
 
+        self._last_stats = LLMStats()
         started = time.perf_counter()
-        try:
-            stream = self._client.chat.completions.create(
+        usage_seen = False
+
+        def create_stream(*, completion_key: str, include_usage: bool):
+            params = dict(
                 model=self.model,
                 messages=messages,
                 stream=True,
                 temperature=self._temperature,
                 top_p=self._top_p,
-                max_tokens=max_tokens or self._max_tokens,
             )
+            params[completion_key] = max_tokens or self._max_tokens
+            if include_usage:
+                params["stream_options"] = {"include_usage": True}
+            try:
+                return self._client.chat.completions.create(**params)
+            except APIError as exc:
+                text = str(exc).lower()
+                # Разные OpenAI-совместимые API принимают разные имена параметров.
+                if include_usage and "stream_options" in text:
+                    return create_stream(completion_key=completion_key, include_usage=False)
+                if completion_key == "max_tokens" and (
+                    "max_tokens" in text or "unsupported parameter" in text
+                ):
+                    return create_stream(
+                        completion_key="max_completion_tokens", include_usage=include_usage
+                    )
+                raise
+
+        try:
+            stream = create_stream(completion_key="max_tokens", include_usage=True)
             for chunk in stream:
                 usage = getattr(chunk, "usage", None)
                 if usage is not None:
+                    usage_seen = True
                     self._last_stats = LLMStats(
                         prompt_tokens=int(getattr(usage, "prompt_tokens", 0) or 0),
                         output_tokens=int(getattr(usage, "completion_tokens", 0) or 0),
@@ -75,6 +98,8 @@ class OpenAIBackend:
                 piece = getattr(chunk.choices[0].delta, "content", None)
                 if piece:
                     yield piece
+            if not usage_seen:
+                self._last_stats.tokens_unavailable = True
         except APITimeoutError as exc:
             raise LLMTimeout("Превышено время ожидания ответа OpenAI-совместимого API") from exc
         except APIConnectionError as exc:

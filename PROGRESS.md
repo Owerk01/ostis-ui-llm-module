@@ -213,3 +213,19 @@ typecheck и E2E (`indicator_ms=81`, чипы, таймер 1,0 с, отмена
 
 До: `not ok 1 - retry creates a new full turn...`. После: 7 node-тестов,
 typecheck и `make test` зелёные.
+
+## FIX-P1-6. Статистика LLM и утечка токенов
+
+Изменено:
+
+- `LLMStats` получил поле `tokens_unavailable`; оба бэкенда сбрасывают статистику
+  в начале `chat()`.
+- OpenAI: `stream_options={"include_usage": True}`, чтение usage из финального
+  chunk, откат `max_tokens` → `max_completion_tokens` и отключение stream_options
+  при отказе провайдера; без usage выставляется `tokens_unavailable`.
+- `KnowledgeService` пишет `tokens_unavailable` в JSONL; `.env.example` и контракт
+  описывают совместимость параметров.
+- Тесты: сброс статистики после ошибки, запрос usage, пометка при отсутствии usage.
+
+До: 3 теста падали (`stream_options` отсутствовал, поле `tokens_unavailable`
+отсутствовало, статистика не сбрасывалась). После: 63 Python-теста зелёные.

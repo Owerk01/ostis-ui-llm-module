@@ -231,6 +231,41 @@ def test_openai_connection_error_is_unavailable() -> None:
         list(backend.chat([{"role": "user", "content": "q"}]))
 
 
+def test_stats_reset_on_error() -> None:
+    """После ошибки в журнал не должны попасть токены предыдущего запроса."""
+    from ostis_ui_assistant.llm.base import LLMStats, LLMTimeout
+
+    def handler(request: httpx.Request) -> httpx.Response:
+        raise httpx.ReadTimeout("timeout", request=request)
+
+    backend = OllamaBackend(ollama_settings(), http_client=ollama_client(handler))
+    backend._last_stats = LLMStats(prompt_tokens=999, output_tokens=888, total_ms=777)
+
+    with pytest.raises(LLMTimeout):
+        list(backend.chat([{"role": "user", "content": "q"}]))
+
+    assert backend.last_stats.prompt_tokens == 0
+    assert backend.last_stats.output_tokens == 0
+
+
+def test_openai_requests_usage_and_limit_param() -> None:
+    captured: dict = {}
+    client = FakeOpenAIClient([FakeChunk("ok", usage=FakeUsage())], captured)
+    backend = OpenAIBackend(openai_settings(), client=client)
+    list(backend.chat([{"role": "user", "content": "q"}]))
+
+    assert captured["stream_options"] == {"include_usage": True}
+    assert captured["max_tokens"] == 256
+
+
+def test_openai_without_usage_marks_tokens_unavailable() -> None:
+    client = FakeOpenAIClient([FakeChunk("ok")])
+    backend = OpenAIBackend(openai_settings(), client=client)
+    list(backend.chat([{"role": "user", "content": "q"}]))
+
+    assert backend.last_stats.tokens_unavailable is True
+
+
 # --- Фабрика --------------------------------------------------------------
 
 
