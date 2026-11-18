@@ -8,7 +8,8 @@ PY    := $(VENV)/bin/python
 .DEFAULT_GOAL := help
 
 .PHONY: help setup kb machine machine-stop ollama ollama-stop pull venv smoke \
-        up down service panel pack kb-load test eval agent smoke-action
+        up down service panel pack kb-load test eval agent agent-start agent-stop \
+        panel-start panel-stop smoke-action
 
 help:
 	@echo "M0 (реализовано):"
@@ -21,7 +22,7 @@ help:
 	@echo "  make pull         — скачать модель qwen3.5:4b"
 	@echo "  make smoke        — смоук-тест чтения БЗ (M0-T6)"
 	@echo "  make venv         — создать .venv и поставить зависимости сервиса"
-	@echo "  make up / down    — поднять/остановить платформу M0"
+	@echo "  make up / down    — поднять/остановить весь стек (sc-machine, Ollama, агент, панель)"
 	@echo "M1 (реализовано):"
 	@echo "  make pack         — собрать knowledge/pack.json из каталога редактора"
 	@echo "  make service      — запустить FastAPI direct-http на 127.0.0.1:8770"
@@ -32,6 +33,9 @@ help:
 	@echo "  make smoke-action — действие из скрипта: вопрос → ответ в БЗ"
 	@echo "  make kb-load      — пересобрать БЗ с kb/ui_assistant и поднять sc-machine"
 	@echo "M3: make eval"
+	@echo "M4 (реализовано):"
+	@echo "  make build-lib    — собрать панель как библиотеку (dist-lib)"
+	@echo "  make agent-start / panel-start / agent-stop / panel-stop — фоновый запуск"
 
 setup:
 	@bash tools/setup_platform.sh
@@ -64,16 +68,18 @@ venv:
 smoke: venv
 	@$(PY) tools/kb_smoke_test.py
 
-# Повторный up не пересобирает БЗ (это ~3 мин); для пересборки есть make kb.
-up: setup ollama pull
+# Повторный up не пересобирает БЗ (это ~3 мин); для пересборки есть make kb-load.
+up: setup ollama pull pack
 	@if [ ! -d .runtime/kb.bin ]; then \
 		$(MAKE) machine-stop kb; \
 	fi
 	@$(MAKE) machine
-	@echo "Платформа M0 готова: sc-machine 8090, Ollama 11434, модель qwen3.5:4b"
+	@$(MAKE) agent-start
+	@$(MAKE) panel-start
+	@echo "Стек готов: sc-machine 8090, Ollama 11434, агент, панель 127.0.0.1:5173"
 
-down: machine-stop
-	@echo "sc-machine остановлена. Ollama оставлена запущенной; для остановки: make ollama-stop"
+down: panel-stop agent-stop machine-stop
+	@echo "Стек остановлен. Ollama оставлена запущенной; для остановки: make ollama-stop"
 
 pack: venv
 	@$(PY) tools/build_knowledge_pack.py
@@ -91,6 +97,21 @@ agent: venv
 
 smoke-action: venv
 	@$(PY) tools/action_smoke_test.py "$(or $(Q),Что такое concept_ui_button?)"
+
+agent-start: venv
+	@bash tools/start_agent.sh
+
+agent-stop:
+	@bash tools/stop_agent.sh
+
+panel-start:
+	@bash tools/start_panel.sh
+
+panel-stop:
+	@bash tools/stop_panel.sh
+
+build-lib:
+	@cd panel && npm run build:lib
 
 panel:
 	@cd panel && if [ ! -d node_modules ]; then npm install --no-audit --no-fund; fi

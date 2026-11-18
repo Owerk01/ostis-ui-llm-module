@@ -5,70 +5,84 @@
 
 Контракт этапа — [`AGENTS.md`](AGENTS.md). Ход работ — [`PROGRESS.md`](PROGRESS.md).
 
-> Реализованы вехи **M0** (платформа), **M1** (локальная модель, knowledge
-> pack, FastAPI-сервис, панель) и **M2** (знания в БЗ, sc-агент, транспорт
-> `sc-memory`). Работают:
+> Реализованы **все вехи этапа 1 (M0–M4)**. Работают:
 > - боевой режим `sc-memory`: панель → действие в БЗ → sc-агент → LLM →
 >   ответ и журнал в БЗ → панель;
 > - отладочный режим `direct-http` с потоковым SSE;
 > - ответы по каталогу (16 типов, 27 свойств, 4 отношения), 5 принципов,
 >   методика и устройство среды;
-> - пост-валидация идентификаторов и чипы оснований;
-> - отмена, таймауты, ошибки LLM, повтор запроса.
->
-> В M3 — gold-набор и метрики качества, в M4 — встраивание и финальная
-> документация.
+> - пост-валидация идентификаторов, guard неизвестных id и чипы оснований;
+> - отмена, таймауты, ошибки LLM, повтор запроса;
+> - gold-набор 46 вопросов: Accuracy 100%, галлюцинаций 0, отказы 100%
+>   (профиль A `qwen3.5:4b`, подробности — `docs/03_EVAL.md`);
+> - панель как изолированная библиотека (`npm run build:lib`) для встраивания в редактор.
 
-## Быстрый старт (Linux)
+## Быстрый старт (Linux / WSL2)
 
-Требования: Python 3.12, Node 20+, `git`, `curl`, `zstd`, Ollama (можно
-пользовательски, см. ниже).
+Требования: **Linux x86_64**, Python 3.12, Node 20+, `git`, `curl`, `zstd`,
+Ollama. Docker не нужен.
+
+### 1. Источники истины (только для чтения)
+
+```bash
+mkdir -p external && cd external
+git clone https://github.com/vodo4kin/ostis-ui-editor
+git -C ostis-ui-editor checkout f6eb4fa
+git clone -b feature/SCS_to_HTML https://github.com/Glentas/ostis-ui
+git -C ostis-ui checkout a673766
+git clone https://github.com/Oddchew/UI-adaptation
+git -C UI-adaptation checkout 5c3d627
+git clone -b 0.10.0 https://github.com/ostis-apps/ostis-example-app
+cd ..
+```
+
+Коммиты зафиксированы в `knowledge/provenance.json`. `external/` в `.gitignore`.
+
+### 2. Один командой
 
 ```bash
 cp .env.example .env
-
-make setup        # скачать sc-machine 0.10.5 в .runtime/
-make kb           # собрать БЗ (первый раз ~3 мин)
-make machine      # sc-machine на 127.0.0.1:8090
-make ollama       # Ollama с настройками из AGENTS.md 2.3
-make pull         # qwen3.5:4b (если ещё нет)
-
-make pack         # knowledge/pack.json + generated .scs из каталога редактора
-make kb-load      # пересобрать БЗ с kb/ui_assistant и поднять sc-machine
-make agent        # sc-агент (боевой режим sc-memory, отдельный терминал)
-make panel        # панель на http://localhost:5173/ (отдельный терминал)
+make up
 ```
 
-Открыть `http://localhost:5173/`, выбрать транспорт `sc-memory` (он выбран по
-умолчанию), задать вопрос, например «Чем `concept_ui_button` отличается от
-`concept_ui_menu_item`?». Запрос и ответ сохраняются в БЗ.
+`make up` ставит зависимости, скачивает sc-machine 0.10.5 и модель
+`qwen3.5:4b` (если их нет), собирает pack и БЗ, поднимает sc-machine,
+sc-агента и панель. Повторный запуск ничего не пересобирает.
 
-Отладочный режим вместо агента:
+Открыть **http://127.0.0.1:5173/**, транспорт `sc-memory` выбран по умолчанию.
+Вопрос для проверки: «Чем `concept_ui_button` отличается от `concept_ui_menu_item`?».
+
+### 3. Пошагово (для отладки)
 
 ```bash
-make service      # FastAPI на 127.0.0.1:8770
+make venv          # .venv и зависимости
+make setup         # sc-machine 0.10.5 в .runtime/
+make ollama        # Ollama с настройками из AGENTS.md 2.3
+make pull          # qwen3.5:4b, если ещё нет
+make pack          # pack.json + generated .scs + проверка коллизий
+make kb-load       # собрать БЗ с kb/ui_assistant и поднять sc-machine
+make agent         # sc-агент в текущем терминале
+make panel         # Vite в текущем терминале
 ```
 
-и переключить транспорт в dev-стенде на `direct-http`.
+Отладочный режим вместо агента — `make service` (FastAPI на 127.0.0.1:8770)
+и переключатель `direct-http` в dev-стенде.
 
-Проверка:
+### 4. Проверки и остановка
 
 ```bash
-make test         # pytest сервиса + коллизии идентификаторов + typecheck панели
+make test         # pytest + проверка коллизий идентификаторов + typecheck панели
 make smoke        # чтение БЗ (нужна sc-machine)
-make smoke-action # действие из скрипта → ответ в БЗ (нужен make agent)
+make smoke-action # действие → ответ в БЗ (нужен агент)
+make eval ARGS="--label final"   # gold-набор и метрики
+make build-lib    # библиотека панели в panel/dist-lib
 E2E_MODE=sc-memory .venv/bin/python tools/e2e_panel.py   # headless Chrome
+
+make down         # панель, агент и sc-machine
+make ollama-stop  # Ollama, если запущена через make
 ```
 
-Повторный `make up` не пересобирает БЗ и не скачивает модель заново;
-для пересборки БЗ — `make kb` (sc-machine должна быть остановлена).
-
-Остановка:
-
-```bash
-make down         # остановить sc-machine
-make ollama-stop  # остановить Ollama, если запущен через make
-```
+Пересборка БЗ после правок `.scs`: `make kb-load` (sc-machine будет остановлена).
 
 ### Установка Ollama без sudo
 
@@ -79,6 +93,25 @@ curl -fsSL https://ollama.com/download/ollama-linux-amd64.tar.zst \
 ```
 
 `make ollama` найдёт `~/.local/bin/ollama` автоматически.
+
+## Быстрый старт (Windows 10/11)
+
+Скрипты платформы — bash, а sc-machine поставляется только для Linux x86_64,
+поэтому используйте **WSL2**:
+
+```powershell
+wsl --install -d Ubuntu-24.04
+# после перезагрузки откройте Ubuntu и выполните все шаги раздела Linux:
+sudo apt update && sudo apt install -y python3.12 python3.12-venv git curl zstd
+curl -fsSL https://ollama.com/install.sh | sh
+```
+
+Далее в терминале WSL — те же команды `git clone …`, `cp .env.example .env`,
+`make up`. Порты WSL пробрасываются в Windows автоматически, поэтому панель
+открывается и из Windows-браузера на `http://127.0.0.1:5173/`.
+
+Если Ollama установлена на Windows-хосте, запустите её с `OLLAMA_HOST=0.0.0.0`
+и в `.env` WSL укажите `LLM_BASE_URL=http://<IP-хоста>:11434`.
 
 ## Сервис direct-http (M1)
 
