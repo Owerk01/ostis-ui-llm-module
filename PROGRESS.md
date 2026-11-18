@@ -287,5 +287,12 @@ typecheck и `make test` зелёные.
 До: 2 теста падали (`TypeError: unexpected keyword argument 'deadline'`).
 После: 68 Python-тестов зелёные.
 
+## FIX-P2-5. Валидатор видит ui_*-идентификаторы знаний
+
+Реализация вошла в P1-2 (регулярка + `KNOWLEDGE_IDENTIFIERS` в whitelist); здесь
+добавлен тест `test_unknown_knowledge_identifier_removed` и уточнён контракт.
+Проверка: `ui_principle_accessibility` проходит, `ui_fake_section` вырезается
+с пометкой. 69 Python-тестов зелёные.
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.

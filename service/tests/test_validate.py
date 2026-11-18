@@ -89,6 +89,14 @@ def test_extract_ignores_plain_russian_words() -> None:
     assert extract_identifiers("Кнопка и пункт меню — это компоненты.") == []
 
 
+def test_unknown_knowledge_identifier_removed() -> None:
+    """Выдуманные ui_*-ссылки на несуществующие узлы знаний вырезаются."""
+    result = validate_answer("См. раздел ui_fake_section.")
+
+    assert "ui_fake_section" not in result.text
+    assert REMOVAL_NOTE in result.text
+
+
 def test_environment_identifier_allowed() -> None:
     """Идентификаторы HTML-трансляции упоминаются, но не считаются галлюцинацией."""
     text = "Трансляцию выполняет `action_translate_sc_to_html`, а шаблон задаёт `nrel_html_template`."
