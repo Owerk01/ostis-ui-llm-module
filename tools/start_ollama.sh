@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Запускает локальный Ollama с настройками из раздела 2.3 AGENTS.md.
+# Запускает локальный Ollama с рекомендованными настройками контекста и KV.
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"

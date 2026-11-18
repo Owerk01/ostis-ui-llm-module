@@ -1,4 +1,4 @@
-"""Сервис ответа: knowledge pack + LLM + пост-валидация (M1-T3…T5)."""
+"""Сервис ответа: knowledge pack + LLM + пост-валидация."""
 
 from __future__ import annotations
 
@@ -137,7 +137,7 @@ class KnowledgeService:
         if not question:
             raise ValueError("Пустой запрос")
 
-        # NFR-11 / FR-13: идентификаторы вне контракта не передаём модели вообще.
+        # Идентификаторы вне контракта не передаём модели вообще.
         unknown = find_unknown(question)
         if unknown:
             logger.warning(

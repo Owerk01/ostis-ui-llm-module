@@ -1,4 +1,4 @@
-/** Публичный API панели ассистента (M4-T1). */
+/** Публичный API панели ассистента. */
 
 export { AssistantPanel } from './AssistantPanel'
 export type { AssistantPanelProps } from './AssistantPanel'

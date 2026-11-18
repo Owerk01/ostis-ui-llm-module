@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Сборка knowledge pack из репозитория редактора (M1-T2).
+"""Сборка knowledge pack из репозитория редактора.
 
 Основной путь: `npx tsx tools/dump_catalog.ts` импортирует catalog.ts/names.ts
 и печатает точный JSON. Резервный путь: разбор docs/catalog.md (без defaults
@@ -64,7 +64,7 @@ def git_commit(path: Path) -> str:
 def parse_knowledge_scs(path: Path) -> list[dict[str, str]]:
     """Разбирает наши .scs с одним знанием на блок (блоки разделены пустой строкой).
 
-    Ожидаемая форма блока (AGENTS.md, 3.6):
+    Ожидаемая форма блока:
         <idtf>
         <- <class>;
         => nrel_main_idtf: [<title>] (* <- lang_ru;; *);

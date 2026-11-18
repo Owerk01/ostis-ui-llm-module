@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Прогон gold-набора и отчёт по метрикам (M3-T2).
+"""Прогон gold-набора и отчёт по метрикам.
 
 Запуск:
     python tools/run_eval.py                        # профиль A, знания из БЗ
@@ -7,7 +7,7 @@
     python tools/run_eval.py --limit 10 --category compare
     python tools/run_eval.py --model qwen3.5:9b --label profile-b
 
-Метрики (AGENTS.md 2.1 FR-13, 2.4):
+Метрики:
     accuracy              — доля вопросов, где выполнены все must_contain,
                             ни один must_not_contain и все группы must_contain_any;
     hallucinated_id_rate  — доля ответов с неизвестным идентификатором ДО валидации;

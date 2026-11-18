@@ -1,11 +1,12 @@
 # ostis-ui-assistant
 
 Ассистент разработчика пользовательских интерфейсов (ПИ) для инструментальной
-среды OSTIS. Этап 1: локальная LLM + связь с базой знаний через sc-память.
+среды OSTIS. Локальная LLM + связь с базой знаний через sc-память.
 
-Контракт этапа — [`AGENTS.md`](AGENTS.md). Ход работ — [`PROGRESS.md`](PROGRESS.md).
+Документация: [контракты](docs/01_CONTRACTS.md),
+[знания](docs/02_KNOWLEDGE.md), [оценка качества](docs/03_EVAL.md).
 
-> Реализованы **все вехи этапа 1 (M0–M4)**. Работают:
+> Реализовано:
 > - боевой режим `sc-memory`: панель → действие в БЗ → sc-агент → LLM →
 >   ответ и журнал в БЗ → панель;
 > - отладочный режим `direct-http` с потоковым SSE;
@@ -57,7 +58,7 @@ sc-агента и панель. Повторный запуск ничего н
 ```bash
 make venv          # .venv и зависимости
 make setup         # sc-machine 0.10.5 в .runtime/
-make ollama        # Ollama с настройками из AGENTS.md 2.3
+make ollama        # Ollama с рекомендованными настройками контекста и KV
 make pull          # qwen3.5:4b, если ещё нет
 make pack          # pack.json + generated .scs + проверка коллизий
 make kb-load       # собрать БЗ с kb/ui_assistant и поднять sc-machine
@@ -74,7 +75,7 @@ make panel         # Vite в текущем терминале
 make test         # pytest + проверка коллизий идентификаторов + typecheck панели
 make smoke        # чтение БЗ (нужна sc-machine)
 make smoke-action # действие → ответ в БЗ (нужен агент)
-make eval ARGS="--label final"   # gold-набор и метрики
+make eval ARGS="--label profile-a-final"   # gold-набор и метрики
 make build-lib    # библиотека панели в panel/dist-lib
 E2E_MODE=sc-memory .venv/bin/python tools/e2e_panel.py   # headless Chrome
 
@@ -113,7 +114,7 @@ curl -fsSL https://ollama.com/install.sh | sh
 Если Ollama установлена на Windows-хосте, запустите её с `OLLAMA_HOST=0.0.0.0`
 и в `.env` WSL укажите `LLM_BASE_URL=http://<IP-хоста>:11434`.
 
-## Сервис direct-http (M1)
+## Сервис direct-http
 
 | Метод | Путь | Назначение |
 |---|---|---|
@@ -134,7 +135,7 @@ curl -sN -X POST http://127.0.0.1:8770/ask \
 
 События SSE: `meta`, `delta`, `done`, `cancelled`, `error`.
 Ответ сначала генерируется и валидируется целиком, затем отдаётся кусками:
-так гарантируется отсутствие выдуманных идентификаторов (FR-13).
+так гарантируется отсутствие выдуманных идентификаторов.
 
 ## Панель
 
@@ -153,13 +154,13 @@ tools/               setup, сборка БЗ, pack, смоук
 service/             Python-сервис: LLM, знания, валидация, FastAPI
 panel/               панель чата React + dev-стенд
 docs/                контракты, знания, методика оценки, скриншоты
-eval/                gold-набор и отчёты (M3)
+eval/                gold-набор и отчёты прогонов
 ```
 
 ## Важно
 
 - `external/` не редактируется; схема UI не копируется и не переопределяется.
-- На этапе 1 ассистент **не изменяет** модель интерфейса и не вызывает
+- Ассистент **не изменяет** модель интерфейса и не вызывает
   `action_translate_sc_to_html`.
 - В режиме `sc-memory` знания читаются из БЗ (`kb`) и только при её
   недоступности берутся из `knowledge/pack.json` (`fallback`, с явной пометкой

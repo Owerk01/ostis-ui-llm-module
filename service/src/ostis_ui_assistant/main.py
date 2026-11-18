@@ -1,4 +1,4 @@
-"""Точка входа сервиса: режим выбирается ASSISTANT_TRANSPORT (AGENTS.md 3.4)."""
+"""Точка входа сервиса: режим выбирается ASSISTANT_TRANSPORT."""
 
 from __future__ import annotations
 

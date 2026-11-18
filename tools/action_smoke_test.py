@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Смоук-тест действия action_answer_ui_development_question (M2-T8).
+"""Смоук-тест действия action_answer_ui_development_question.
 
 Создаёт узел действия в БЗ, ждёт завершения и печатает историю диалога.
 Требует запущенного sc-агента (ASSISTANT_TRANSPORT=sc-memory).

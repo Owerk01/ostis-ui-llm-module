@@ -18,7 +18,7 @@ export interface AssistantPanelProps {
   title?: string // по умолчанию «Ассистент разработчика ПИ»
   className?: string
   onSourceClick?: (ref: SourceRef) => void // редактор подсветит узел
-  // --- ЗАРЕЗЕРВИРОВАНО, этап 2, НЕ реализовывать ---
+  // --- ЗАРЕЗЕРВИРОВАНО, не реализовано ---
   // contextSelection?: ContextSelection
   // onContextChange?: (c: ContextSelection) => void
   // onProposedChange?: (p: ProposedChange) => void
@@ -238,7 +238,7 @@ export function AssistantPanel({
             Вопросы о типологии компонентов, свойствах, принципах и методике разработки ПИ
           </p>
         </div>
-        <span className={styles['oaa-badge']}>этап 1</span>
+        <span className={styles['oaa-badge']}>OSTIS</span>
       </header>
 
       <StatusBar {...statusProps} />

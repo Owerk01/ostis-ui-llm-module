@@ -29,7 +29,7 @@ OUT_PATH = ROOT / "kb" / "ui_assistant" / "generated" / "ui_catalog_knowledge.sc
 
 HEADER = """// СГЕНЕРИРОВАНО tools/generate_kb_scs.py из knowledge/pack.json.
 // Только навешивание текстов на существующие классы редактора.
-// Запрещено объявлять типы (AGENTS.md, 1.5): у классов не должно быть объявлений.
+// Запрещено объявлять типы: у классов не должно быть объявлений.
 """
 
 

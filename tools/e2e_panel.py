@@ -1,4 +1,4 @@
-"""E2E-проверка панели через headless Chrome (M1-T6/T7).
+"""E2E-проверка панели через headless Chrome.
 
 Запускается вручную при поднятых сервисе и dev-сервере панели:
     pip install playwright

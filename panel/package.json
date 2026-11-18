@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Панель диалога с ассистентом разработчика ПИ (2.b.i), изолированный компонент",
+  "description": "Панель диалога с ассистентом разработчика ПИ, изолированный компонент",
   "main": "./dist-lib/index.js",
   "module": "./dist-lib/index.js",
   "types": "./dist-lib/index.d.ts",

@@ -1,4 +1,4 @@
-"""Тесты direct-http API: /health, /ask SSE, /cancel (M1-T5)."""
+"""Тесты direct-http API: /health, /ask SSE, /cancel."""
 
 from __future__ import annotations
 

@@ -1,4 +1,4 @@
-"""sc-модуль ассистента (M2-T8)."""
+"""sc-модуль ассистента."""
 
 from __future__ import annotations
 

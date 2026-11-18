@@ -12,28 +12,27 @@ PY    := $(VENV)/bin/python
         panel-start panel-stop smoke-action
 
 help:
-	@echo "M0 (реализовано):"
+	@echo "Платформа:"
 	@echo "  make setup        — скачать официальные бинарники sc-machine 0.10.5 в .runtime/"
 	@echo "  make kb           — собрать БЗ из external/ и kb/ в .runtime/kb.bin"
 	@echo "  make machine      — запустить sc-machine нативно (порт 8090)"
 	@echo "  make machine-stop — остановить sc-machine"
-	@echo "  make ollama       — запустить Ollama с настройками из AGENTS.md 2.3"
+	@echo "  make ollama       — запустить Ollama с рекомендованными настройками"
 	@echo "  make ollama-stop  — остановить Ollama, запущенный через make"
 	@echo "  make pull         — скачать модель qwen3.5:4b"
-	@echo "  make smoke        — смоук-тест чтения БЗ (M0-T6)"
+	@echo "  make smoke        — смоук-тест чтения БЗ"
 	@echo "  make venv         — создать .venv и поставить зависимости сервиса"
 	@echo "  make up / down    — поднять/остановить весь стек (sc-machine, Ollama, агент, панель)"
-	@echo "M1 (реализовано):"
+	@echo "Сервис и знания:"
 	@echo "  make pack         — собрать knowledge/pack.json из каталога редактора"
 	@echo "  make service      — запустить FastAPI direct-http на 127.0.0.1:8770"
 	@echo "  make panel        — запустить dev-стенд панели на 127.0.0.1:5173"
-	@echo "  make test         — pytest сервиса + typecheck панели"
-	@echo "M2 (реализовано):"
 	@echo "  make agent        — запустить sc-агент (ASSISTANT_TRANSPORT=sc-memory)"
 	@echo "  make smoke-action — действие из скрипта: вопрос → ответ в БЗ"
 	@echo "  make kb-load      — пересобрать БЗ с kb/ui_assistant и поднять sc-machine"
-	@echo "M3: make eval"
-	@echo "M4 (реализовано):"
+	@echo "Проверки и сборка:"
+	@echo "  make test         — pytest сервиса + typecheck панели"
+	@echo "  make eval         — прогон gold-набора и отчёт (ARGS=\"--label ...\")"
 	@echo "  make build-lib    — собрать панель как библиотеку (dist-lib)"
 	@echo "  make agent-start / panel-start / agent-stop / panel-stop — фоновый запуск"
 
@@ -61,7 +60,7 @@ pull: ollama
 venv:
 	@test -d "$(VENV)" || $(PYTHON) -m venv "$(VENV)"
 	@$(VENV)/bin/pip install -q -U pip
-	@$(VENV)/bin/pip install -q -r tools/requirements-m0.txt
+	@$(VENV)/bin/pip install -q -r tools/requirements.txt
 	@$(VENV)/bin/pip install -q -e "./service[dev]"
 	@echo "Окружение готово: $(VENV)"
 

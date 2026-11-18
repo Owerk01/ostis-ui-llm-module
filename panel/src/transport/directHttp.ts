@@ -1,9 +1,8 @@
 /**
- * Отладочный HTTP-транспорт (только M1).
+ * Отладочный HTTP-транспорт.
  *
  * Работает с FastAPI-сервисом direct-http: /health, /dialog, /history/{id},
- * /ask (SSE), /cancel. В боевом режиме панель будет использовать scMemory.ts,
- * который появится в M2-T9.
+ * /ask (SSE), /cancel. В основном режиме панель использует scMemory.ts.
  */
 
 import type {

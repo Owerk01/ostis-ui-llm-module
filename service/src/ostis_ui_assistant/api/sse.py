@@ -1,4 +1,4 @@
-"""Память диалога и реестр отмен для direct-http (M1-T5/T6)."""
+"""Память диалога и реестр отмен для direct-http."""
 
 from __future__ import annotations
 
@@ -37,7 +37,7 @@ class DialogMessage:
 
 
 class DialogStore:
-    """In-memory история для отладочного транспорта; в sc-память пишет M2."""
+    """In-memory история для отладочного транспорта; постоянная история — в sc-памяти."""
 
     def __init__(self) -> None:
         self._lock = threading.Lock()

@@ -1,4 +1,4 @@
-"""Конфигурация сервиса из .env (раздел 3.4 AGENTS.md)."""
+"""Конфигурация сервиса из .env."""
 
 from __future__ import annotations
 

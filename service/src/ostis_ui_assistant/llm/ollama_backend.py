@@ -1,4 +1,4 @@
-"""Нативный Ollama-бэкенд: /api/chat, стрим, think:false (M1-T1)."""
+"""Нативный Ollama-бэкенд: /api/chat, стрим, think:false."""
 
 from __future__ import annotations
 

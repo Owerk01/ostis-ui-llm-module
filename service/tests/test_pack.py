@@ -1,4 +1,4 @@
-"""Контрактные тесты knowledge pack (M1-T2)."""
+"""Контрактные тесты knowledge pack."""
 
 from __future__ import annotations
 

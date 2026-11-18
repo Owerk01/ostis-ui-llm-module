@@ -1,4 +1,4 @@
-"""FastAPI direct-http режим: /health, /ask (SSE), /cancel (M1-T5)."""
+"""FastAPI direct-http режим: /health, /ask (SSE), /cancel."""
 
 from __future__ import annotations
 
