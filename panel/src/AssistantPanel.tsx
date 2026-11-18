@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Composer } from './components/Composer'
+import { errorHint } from './transport/errorHint'
 import { MessageList } from './components/MessageList'
 import { StatusBar, type RequestState } from './components/StatusBar'
 import { cx } from './components/cx'
@@ -254,8 +255,7 @@ export function AssistantPanel({
 
       {initError || healthError ? (
         <div className={cx(styles['oaa-banner'], styles['oaa-banner-error'])} role="alert">
-          {initError ?? healthError}. Проверьте, что сервис запущен:{' '}
-          <code>make service</code>.
+          {initError ?? healthError}. {errorHint(transport.kind)}.
         </div>
       ) : null}
 

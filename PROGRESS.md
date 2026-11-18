@@ -268,5 +268,14 @@ typecheck и `make test` зелёные.
 После: 11 node-тестов, 65 Python-тестов, typecheck и E2E зелёные
 (индикатор 84 мс, чипы, отказ, отмена).
 
+## FIX-P2-3. Подсказка об ошибке зависит от транспорта
+
+Изменено: `errorHint.ts` возвращает `make kb-load` / `make agent` для sc-memory и
+`make service` для direct-http; `AssistantPanel` использует эту функцию. Тест
+`errorHint.test.ts` добавлен в `npm test`.
+
+До: `ERR_MODULE_NOT_FOUND: errorHint.ts`. После: 12 node-тестов, typecheck и
+`make test` зелёные.
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.
