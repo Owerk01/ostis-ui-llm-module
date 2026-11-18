@@ -135,39 +135,46 @@ def _type_defaults_line(defaults: dict[str, Any], global_defaults: dict[str, Any
     return ", ".join(parts)
 
 
+def component_type_line(item: dict[str, Any], global_defaults: dict[str, Any]) -> str:
+    defaults = _type_defaults_line(item.get("defaults", {}), global_defaults)
+    line = (
+        f"{item['sc_class']} | {item['label_ru']} | ключ: {item['type_id']} "
+        f"| назначение: {item.get('purpose_ru', '')}"
+    )
+    if defaults:
+        line += f" | по умолчанию: {defaults}"
+    return line
+
+
 def render_component_types(pack: dict[str, Any]) -> str:
     global_defaults = _global_defaults(pack)
     lines: list[str] = []
     for item in pack.get("component_types", []):
-        defaults = _type_defaults_line(item.get("defaults", {}), global_defaults)
-        line = (
-            f"{item['sc_class']} | {item['label_ru']} | ключ: {item['type_id']} "
-            f"| назначение: {item.get('purpose_ru', '')}"
-        )
-        if defaults:
-            line += f" | по умолчанию: {defaults}"
-        lines.append(line)
+        lines.append(item.get("kb_text") or component_type_line(item, global_defaults))
     return "\n".join(lines)
+
+
+def property_line(prop: dict[str, Any]) -> str:
+    default = prop.get("default")
+    if default is None:
+        default_text = prop.get("default_note_ru", "зависит от типа")
+    else:
+        default_text = _format_value(default)
+    line = (
+        f"{prop['sc_class']} | {prop['key']} | {prop.get('type', 'string')} "
+        f"| по умолчанию: {default_text} | смысл: {prop.get('meaning_ru', '')}"
+    )
+    allowed = prop.get("allowed_values")
+    if allowed:
+        allowed_text = allowed if isinstance(allowed, str) else " / ".join(map(str, allowed))
+        line += f" | допустимо: {allowed_text}"
+    return line
 
 
 def render_properties(pack: dict[str, Any]) -> str:
-    lines: list[str] = []
-    for prop in pack.get("properties", []):
-        default = prop.get("default")
-        if default is None:
-            default_text = prop.get("default_note_ru", "зависит от типа")
-        else:
-            default_text = _format_value(default)
-        line = (
-            f"{prop['sc_class']} | {prop['key']} | {prop.get('type', 'string')} "
-            f"| по умолчанию: {default_text} | смысл: {prop.get('meaning_ru', '')}"
-        )
-        allowed = prop.get("allowed_values")
-        if allowed:
-            allowed_text = allowed if isinstance(allowed, str) else " / ".join(map(str, allowed))
-            line += f" | допустимо: {allowed_text}"
-        lines.append(line)
-    return "\n".join(lines)
+    return "\n".join(
+        prop.get("kb_text") or property_line(prop) for prop in pack.get("properties", [])
+    )
 
 
 def render_relations(pack: dict[str, Any]) -> str:
@@ -223,14 +230,17 @@ def build_prompt(
     truncated: list[str] = []
 
     if knowledge_tokens > budget:
+        full_tokens = knowledge_tokens
         sections = render_sections(pack, truncate=True)
         knowledge_text = "\n".join(sections.values())
         knowledge_tokens = estimate_tokens(knowledge_text)
         truncated = ["methodology_stages", "environment_notes"]
         logger.warning(
-            "Бюджет промпта превышен: %s токенов > %s; methodology/environment усечены",
-            knowledge_tokens,
+            "Бюджет промпта превышен: %s токенов > %s; methodology/environment "
+            "усечены до заголовков (%s токенов)",
+            full_tokens,
             budget,
+            knowledge_tokens,
         )
 
     system_prompt = _fill_template(template, sections)

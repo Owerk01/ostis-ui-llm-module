@@ -59,8 +59,3 @@ class Settings(BaseSettings):
     @property
     def is_ollama(self) -> bool:
         return self.llm_backend == "ollama"
-
-    @property
-    def effective_knowledge_source(self) -> str:
-        """В M1 знания всегда из pack.json; kb появится в M2-T6."""
-        return "fallback"

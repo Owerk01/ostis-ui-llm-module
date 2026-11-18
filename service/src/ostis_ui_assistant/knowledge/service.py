@@ -14,6 +14,7 @@ from typing import Any
 from ..config import Settings
 from ..llm.base import LLMBackend, LLMError, LLMStats, LLMTimeout, create_backend
 from .identifiers import ALL_IDENTIFIERS, PROPERTY_KEYS
+from .kb_reader import KbStatus, close as close_kb, load_pack_from_kb
 from .render import (
     PromptBuildResult,
     build_messages,
@@ -50,14 +51,23 @@ class KnowledgeService:
         self.settings = settings
         self.pack = load_pack(settings.knowledge_pack_path)
         self.template = load_template(settings.prompt_path)
+        self.kb_status = KbStatus()
+        if settings.knowledge_source == "kb":
+            self.pack, self.kb_status = load_pack_from_kb(
+                self.pack,
+                settings.sc_ws_url,
+                allow_fallback=settings.kb_fallback_allowed,
+            )
+        self.knowledge_source = self.kb_status.source
         self.backend = backend or create_backend(settings)
         self._log_lock = threading.Lock()
         self._prompt: PromptBuildResult = build_prompt(self.pack, self.template)
         self._source_map = self._build_source_map()
 
         logger.info(
-            "Knowledge pack %s: %s типов, %s свойств, %s отношений; промпт ~%s токенов",
+            "Knowledge pack %s (%s): %s типов, %s свойств, %s отношений; промпт ~%s токенов",
             self.pack.get("pack_version"),
+            self.knowledge_source,
             len(self.pack.get("component_types", [])),
             len(self.pack.get("properties", [])),
             len(self.pack.get("relations", [])),
@@ -150,7 +160,7 @@ class KnowledgeService:
             latency_ms=round(latency_ms, 1),
             validation_removed=validation.removed,
             hallucinated=validation.hallucinated,
-            knowledge_source=self.settings.effective_knowledge_source,
+            knowledge_source=self.knowledge_source,
         )
         self._write_log(question, result, built)
         return result
@@ -191,13 +201,17 @@ class KnowledgeService:
                 "model_available": model_available,
             },
             "kb": {
-                "connected": False,
-                "knowledgeSource": self.settings.effective_knowledge_source,
+                "connected": self.kb_status.connected,
+                "knowledgeSource": self.knowledge_source,
                 "packVersion": self.pack_version,
                 "degraded": bool(self.pack.get("degraded")),
+                "partial": self.kb_status.partial,
+                "missing": self.kb_status.missing,
+                "counts": self.kb_status.counts,
+                "errors": self.kb_status.errors,
             },
-            "sc_connected": False,
-            "knowledge_source": self.settings.effective_knowledge_source,
+            "sc_connected": self.kb_status.connected,
+            "knowledge_source": self.knowledge_source,
             "pack_version": self.pack_version,
             "prompt_version": self.prompt_version,
             "prompt_estimated_tokens": self._prompt.system_tokens,
@@ -208,3 +222,5 @@ class KnowledgeService:
         close = getattr(self.backend, "close", None)
         if callable(close):
             close()
+        if self.knowledge_source == "kb" and self.settings.assistant_transport == "direct-http":
+            close_kb()
