@@ -26,6 +26,7 @@ export function StatusBar({
 }: StatusBarProps) {
   const reachable = health?.llm.reachable ?? false
   const source = health?.kb.knowledgeSource ?? 'fallback'
+  const scMode = health?.llm.backend === 'sc-memory'
 
   return (
     <div className={styles['oaa-status']} role="status">
@@ -35,10 +36,17 @@ export function StatusBar({
       />
       <span className={styles['oaa-item']}>
         {health ? (
-          <>
-            LLM: <span className={styles['oaa-strong']}>{health.llm.model}</span>
-            {!reachable ? ' — недоступна' : ''}
-          </>
+          scMode ? (
+            <>
+              LLM: <span className={styles['oaa-strong']}>через sc-агент</span>
+              {!reachable ? ' — БЗ недоступна' : ''}
+            </>
+          ) : (
+            <>
+              LLM: <span className={styles['oaa-strong']}>{health.llm.model}</span>
+              {!reachable ? ' — недоступна' : ''}
+            </>
+          )
         ) : healthError ? (
           'Сервис недоступен'
         ) : (
@@ -53,7 +61,7 @@ export function StatusBar({
         {source === 'kb' ? 'Знания из БЗ' : 'Знания из локальной копии'}
       </span>
 
-      {health ? (
+      {health && health.kb.packVersion ? (
         <>
           <span className={styles['oaa-sep']} aria-hidden="true">
             ·

@@ -1,29 +1,57 @@
 import { useMemo, useState } from 'react'
+import { ScClient } from 'ts-sc-client'
 
 import { AssistantPanel } from '../AssistantPanel'
 import { DEFAULT_BASE_URL, DirectHttpTransport } from '../transport/directHttp'
+import { DEFAULT_SC_URL, ScMemoryTransport } from '../transport/scMemory'
 import type { SourceRef } from '../transport/types'
 import styles from './App.module.css'
 
-const STORAGE_KEY = 'oaa.dev.baseUrl'
+const STORAGE_BASE_URL = 'oaa.dev.baseUrl'
+const STORAGE_SC_URL = 'oaa.dev.scUrl'
+const STORAGE_KIND = 'oaa.dev.kind'
 
 type TransportKind = 'direct-http' | 'sc-memory'
 
 export function App() {
   const [baseUrl, setBaseUrl] = useState(
-    () => window.localStorage.getItem(STORAGE_KEY) ?? DEFAULT_BASE_URL,
+    () => window.localStorage.getItem(STORAGE_BASE_URL) ?? DEFAULT_BASE_URL,
   )
-  const [appliedBaseUrl, setAppliedBaseUrl] = useState(baseUrl)
-  const [kind, setKind] = useState<TransportKind>('direct-http')
+  const [scUrl, setScUrl] = useState(
+    () => window.localStorage.getItem(STORAGE_SC_URL) ?? DEFAULT_SC_URL,
+  )
+  const [applied, setApplied] = useState(() => ({
+    baseUrl,
+    scUrl,
+  }))
+  const [kind, setKind] = useState<TransportKind>(() => {
+    const stored = window.localStorage.getItem(STORAGE_KIND)
+    return stored === 'direct-http' ? 'direct-http' : 'sc-memory'
+  })
   const [lastSource, setLastSource] = useState<SourceRef | null>(null)
 
-  // Транспорт должен быть стабильным: создаём его только при смене адреса.
-  const transport = useMemo(() => new DirectHttpTransport(appliedBaseUrl), [appliedBaseUrl])
+  // Транспорт должен быть стабильным: создаём его только при смене режима или адреса.
+  const transport = useMemo(
+    () =>
+      kind === 'sc-memory'
+        ? new ScMemoryTransport(new ScClient(applied.scUrl))
+        : new DirectHttpTransport(applied.baseUrl),
+    [kind, applied],
+  )
 
   const apply = () => {
-    const next = baseUrl.trim().replace(/\/+$/, '')
-    window.localStorage.setItem(STORAGE_KEY, next)
-    setAppliedBaseUrl(next || DEFAULT_BASE_URL)
+    const next = {
+      baseUrl: baseUrl.trim().replace(/\/+$/, '') || DEFAULT_BASE_URL,
+      scUrl: scUrl.trim() || DEFAULT_SC_URL,
+    }
+    window.localStorage.setItem(STORAGE_BASE_URL, next.baseUrl)
+    window.localStorage.setItem(STORAGE_SC_URL, next.scUrl)
+    setApplied(next)
+  }
+
+  const changeKind = (value: TransportKind) => {
+    setKind(value)
+    window.localStorage.setItem(STORAGE_KIND, value)
   }
 
   return (
@@ -31,7 +59,7 @@ export function App() {
       <aside className={styles['oaa-dev-sidebar']}>
         <h1 className={styles['oaa-dev-title']}>Dev-стенд панели</h1>
         <p className={styles['oaa-dev-text']}>
-          Отдельное приложение для M1. В редактор панель встраивается одним компонентом{' '}
+          Отдельное приложение. В редактор панель встраивается одним компонентом{' '}
           <code className={styles['oaa-code']}>{'<AssistantPanel transport={…} />'}</code>.
         </p>
 
@@ -42,39 +70,55 @@ export function App() {
           id="oaa-dev-kind"
           className={styles['oaa-dev-input']}
           value={kind}
-          onChange={(event) => setKind(event.target.value as TransportKind)}
+          onChange={(event) => changeKind(event.target.value as TransportKind)}
         >
-          <option value="direct-http">direct-http (отладочный, M1)</option>
-          <option value="sc-memory">sc-memory (M2-T9, пока недоступен)</option>
+          <option value="sc-memory">sc-memory (боевой, через БЗ)</option>
+          <option value="direct-http">direct-http (отладочный)</option>
         </select>
 
-        <label className={styles['oaa-dev-label']} htmlFor="oaa-dev-url">
-          Адрес сервиса
-        </label>
-        <input
-          id="oaa-dev-url"
-          className={styles['oaa-dev-input']}
-          value={baseUrl}
-          onChange={(event) => setBaseUrl(event.target.value)}
-          onKeyDown={(event) => {
-            if (event.key === 'Enter') apply()
-          }}
-          spellCheck={false}
-        />
+        {kind === 'sc-memory' ? (
+          <>
+            <label className={styles['oaa-dev-label']} htmlFor="oaa-dev-sc-url">
+              Адрес sc-сервера
+            </label>
+            <input
+              id="oaa-dev-sc-url"
+              className={styles['oaa-dev-input']}
+              value={scUrl}
+              onChange={(event) => setScUrl(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') apply()
+              }}
+              spellCheck={false}
+            />
+          </>
+        ) : (
+          <>
+            <label className={styles['oaa-dev-label']} htmlFor="oaa-dev-url">
+              Адрес сервиса
+            </label>
+            <input
+              id="oaa-dev-url"
+              className={styles['oaa-dev-input']}
+              value={baseUrl}
+              onChange={(event) => setBaseUrl(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') apply()
+              }}
+              spellCheck={false}
+            />
+          </>
+        )}
+
         <button type="button" className={styles['oaa-dev-button']} onClick={apply}>
           Применить
         </button>
 
         <p className={styles['oaa-dev-hint']}>
-          sc-сервер для режима sc-memory: <code className={styles['oaa-code']}>ws://127.0.0.1:8090/ws_json</code>
+          {kind === 'sc-memory'
+            ? 'Нужны запущенные sc-machine и sc-агент (make agent). Запрос и ответ сохраняются в БЗ.'
+            : 'Нужен FastAPI-сервис direct-http (make service). Режим только для отладки.'}
         </p>
-
-        {kind === 'sc-memory' ? (
-          <p className={styles['oaa-dev-warning']}>
-            Транспорт sc-memory появится в M2-T9. Сейчас панель работает через direct-http;
-            смысловые конструкции диалога в БЗ ещё не пишутся.
-          </p>
-        ) : null}
 
         {lastSource ? (
           <div className={styles['oaa-dev-source']}>

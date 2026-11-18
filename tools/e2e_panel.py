@@ -8,15 +8,18 @@
 
 from __future__ import annotations
 
+import os
 import sys
-import time
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-PANEL_URL = "http://127.0.0.1:5173/"
+PANEL_URL = "http://localhost:5173/"
 CHROME = "/usr/bin/google-chrome-stable"
-SCREENSHOT = Path("docs/screenshots/m1-panel.png")
+MODE = os.environ.get("E2E_MODE", "direct-http")
+SCREENSHOT = Path(
+    "docs/screenshots/m2-panel-sc.png" if MODE == "sc-memory" else "docs/screenshots/m1-panel.png"
+)
 
 
 def main() -> int:
@@ -30,13 +33,20 @@ def main() -> int:
             args=["--no-sandbox"],
         )
         page = browser.new_page(viewport={"width": 1440, "height": 1000})
+        page.add_init_script(
+            "window.localStorage.setItem('oaa.dev.kind', '" + MODE + "')"
+        )
         page.on("console", lambda msg: console_errors.append(msg.text) if msg.type == "error" else None)
         page.on("pageerror", lambda error: console_errors.append(str(error)))
 
         page.goto(PANEL_URL, wait_until="networkidle")
         page.get_by_role("heading", name="Ассистент разработчика ПИ").wait_for()
-        page.get_by_text("Знания из локальной копии").wait_for()
-        print("health: статус fallback отображается")
+        if MODE == "sc-memory":
+            page.get_by_text("Знания из БЗ").wait_for(timeout=15_000)
+            print("health: режим sc-memory, знания из БЗ")
+        else:
+            page.get_by_text("Знания из локальной копии").wait_for()
+            print("health: статус fallback отображается")
 
         # --- Вопрос о свойстве: индикация, стрим, основания -------------------
         page.locator("#oaa-question").fill("Что задаёт свойство action_id?")
