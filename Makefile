@@ -8,7 +8,7 @@ PY    := $(VENV)/bin/python
 .DEFAULT_GOAL := help
 
 .PHONY: help setup kb machine machine-stop ollama ollama-stop pull venv smoke \
-        up down service panel pack kb-load test eval
+        up down service panel pack kb-load test eval agent smoke-action
 
 help:
 	@echo "M0 (реализовано):"
@@ -27,7 +27,11 @@ help:
 	@echo "  make service      — запустить FastAPI direct-http на 127.0.0.1:8770"
 	@echo "  make panel        — запустить dev-стенд панели на 127.0.0.1:5173"
 	@echo "  make test         — pytest сервиса + typecheck панели"
-	@echo "M2/M3: make kb-load / eval"
+	@echo "M2 (реализовано):"
+	@echo "  make agent        — запустить sc-агент (ASSISTANT_TRANSPORT=sc-memory)"
+	@echo "  make smoke-action — действие из скрипта: вопрос → ответ в БЗ"
+	@echo "  make kb-load      — пересобрать БЗ с kb/ui_assistant и поднять sc-machine"
+	@echo "M3: make eval"
 
 setup:
 	@bash tools/setup_platform.sh
@@ -73,19 +77,32 @@ down: machine-stop
 
 pack: venv
 	@$(PY) tools/build_knowledge_pack.py
+	@$(PY) tools/generate_kb_scs.py
+	@$(PY) tools/check_id_collisions.py
 
 service: venv
 	@test -f .env || echo "WARN: .env не найден, используются значения по умолчанию из .env.example" >&2
 	@$(PY) -m ostis_ui_assistant.main
 
+agent: venv
+	@test -f .env || echo "WARN: .env не найден, используются значения по умолчанию из .env.example" >&2
+	@echo "sc-агент: action_answer_ui_development_question (Ctrl+C — остановить)"
+	@ASSISTANT_TRANSPORT=sc-memory $(PY) -m ostis_ui_assistant.main
+
+smoke-action: venv
+	@$(PY) tools/action_smoke_test.py "$(or $(Q),Что такое concept_ui_button?)"
+
 panel:
 	@cd panel && if [ ! -d node_modules ]; then npm install --no-audit --no-fund; fi
 	@cd panel && npm run dev
 
-kb-load:
-	@echo "Полная загрузка нашего фрагмента в БЗ — M2-T5; сейчас используется make kb." >&2; exit 1
+kb-load: machine-stop
+	@bash tools/build_kb.sh
+	@$(MAKE) machine
+	@$(MAKE) smoke
 
 test: venv
+	@$(PY) tools/check_id_collisions.py
 	@$(VENV)/bin/pytest -q service/tests
 	@if [ -d panel/node_modules ]; then \
 		cd panel && npm run typecheck; \

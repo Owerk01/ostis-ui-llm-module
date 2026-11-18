@@ -1,0 +1,180 @@
+// СГЕНЕРИРОВАНО tools/generate_kb_scs.py из knowledge/pack.json.
+// Только навешивание текстов на существующие классы редактора.
+// Запрещено объявлять типы (AGENTS.md, 1.5): у классов не должно быть объявлений.
+
+// --- Типы компонентов (16) ---
+
+concept_ui_image
+=> nrel_ui_knowledge_text: [concept_ui_image | Изображение | ключ: image | назначение: Отображает изображение из ресурса, указанного в text_value. | по умолчанию: width=160, height=120, background_color=#e4e4e4, border_style=dashed, text_align=center];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_sound
+=> nrel_ui_knowledge_text: [concept_ui_sound | Звук | ключ: sound | назначение: Воспроизводит звук из ресурса, указанного в text_value. | по умолчанию: width=160, height=40, background_color=#e8e8e8, text_align=center];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_text
+=> nrel_ui_knowledge_text: [concept_ui_text | Текст | ключ: text | назначение: Статический текст; содержимое задаётся свойством text_value. | по умолчанию: width=200, height=36, text_value=Текст, background_color=transparent, border_width=0, border_style=none];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_divider
+=> nrel_ui_knowledge_text: [concept_ui_divider | Разделитель | ключ: divider | назначение: Визуальный разделитель групп элементов, не интерактивен. | по умолчанию: width=280, height=10, background_color=#b0b0b0, border_width=0, border_style=none];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_spacer
+=> nrel_ui_knowledge_text: [concept_ui_spacer | Пустое пространство | ключ: spacer | назначение: Пустое пространство для отступов и выравнивания. | по умолчанию: width=80, height=80, background_color=transparent, border_color=#b8b8b8, border_style=dashed];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_menu
+=> nrel_ui_knowledge_text: [concept_ui_menu | Меню | ключ: menu | назначение: Контейнер пунктов меню; дочерние пункты включаются через nrel_ui_contains. | по умолчанию: width=180, height=160, background_color=#f0f0f0, padding=4];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_menu_bar
+=> nrel_ui_knowledge_text: [concept_ui_menu_bar | Строка меню | ключ: menu_bar | назначение: Горизонтальная строка меню для пунктов concept_ui_menu_item. | по умолчанию: width=320, height=32, background_color=#ececec, padding=2];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_list
+=> nrel_ui_knowledge_text: [concept_ui_list | Список | ключ: list | назначение: Упорядоченный набор элементов; элементы включаются через nrel_ui_contains. | по умолчанию: width=220, height=130, background_color=#ffffff];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_scroll
+=> nrel_ui_knowledge_text: [concept_ui_scroll | Панель прокрутки | ключ: scroll | назначение: Контейнер с прокруткой содержимого. | по умолчанию: width=240, height=160, background_color=#f2f2f2, padding=4];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_window
+=> nrel_ui_knowledge_text: [concept_ui_window | Окно | ключ: window | назначение: Окно или панель верхнего уровня для группы компонентов. | по умолчанию: width=320, height=200, text_value=Окно, background_color=#ffffff, padding=8];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_text_field
+=> nrel_ui_knowledge_text: [concept_ui_text_field | Однострочное поле | ключ: text_field | назначение: Однострочный ввод текста; значение в text_value. | по умолчанию: width=240, height=36, background_color=#ffffff, corner_radius=4];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_text_area
+=> nrel_ui_knowledge_text: [concept_ui_text_area | Многострочное поле | ключ: text_area | назначение: Многострочный ввод текста; значение в text_value. | по умолчанию: width=240, height=100, background_color=#ffffff, corner_radius=4, padding=4];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_slider
+=> nrel_ui_knowledge_text: [concept_ui_slider | Ползунок | ключ: slider | назначение: Выбор числового значения в диапазоне; значение в text_value. | по умолчанию: width=200, height=28, text_value=0, background_color=#e6e6e6, border_width=0, border_style=none, text_align=center];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_select
+=> nrel_ui_knowledge_text: [concept_ui_select | Выбор | ключ: select | назначение: Выбор одного значения из набора вариантов. | по умолчанию: width=200, height=36, text_value=Вариант, background_color=#ffffff, corner_radius=4];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_button
+=> nrel_ui_knowledge_text: [concept_ui_button | Кнопка | ключ: button | назначение: Кнопка, инициирующая действие; текст в text_value, действие в action_id. | по умолчанию: width=120, height=36, text_value=Кнопка, background_color=#e0e0e0, corner_radius=4, font_weight=bold, text_align=center];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_menu_item
+=> nrel_ui_knowledge_text: [concept_ui_menu_item | Пункт меню | ключ: menu_item | назначение: Пункт меню внутри concept_ui_menu или concept_ui_menu_bar через nrel_ui_contains. | по умолчанию: width=160, height=28, text_value=Пункт, background_color=transparent, border_width=0, border_style=none, padding=4];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+
+// --- Свойства (27) ---
+
+concept_ui_name
+=> nrel_ui_knowledge_text: [concept_ui_name | name | string | по умолчанию: зависит от типа | смысл: Имя компонента, отображаемое разработчику в редакторе.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_x
+=> nrel_ui_knowledge_text: [concept_ui_x | x | number | по умолчанию: 24 | смысл: Координата X левого верхнего угла компонента.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_y
+=> nrel_ui_knowledge_text: [concept_ui_y | y | number | по умолчанию: 24 | смысл: Координата Y левого верхнего угла компонента.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_width
+=> nrel_ui_knowledge_text: [concept_ui_width | width | number | по умолчанию: зависит от типа | смысл: Ширина компонента в пикселях.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_height
+=> nrel_ui_knowledge_text: [concept_ui_height | height | number | по умолчанию: зависит от типа | смысл: Высота компонента в пикселях.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_order
+=> nrel_ui_knowledge_text: [concept_ui_order | order | number | по умолчанию: 1 | смысл: Порядок слоя: чем больше значение, тем выше компонент.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_visible
+=> nrel_ui_knowledge_text: [concept_ui_visible | visible | boolean | по умолчанию: true | смысл: Видимость компонента в представлении.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_enabled
+=> nrel_ui_knowledge_text: [concept_ui_enabled | enabled | boolean | по умолчанию: true | смысл: Доступность компонента для взаимодействия; false — компонент неактивен.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_opacity
+=> nrel_ui_knowledge_text: [concept_ui_opacity | opacity | number | по умолчанию: 1 | смысл: Непрозрачность компонента: 0 — полностью прозрачный, 1 — непрозрачный. | допустимо: 0…1];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_text_value
+=> nrel_ui_knowledge_text: [concept_ui_text_value | text_value | string | по умолчанию: "" | смысл: Текст компонента; у image и sound — идентификатор ресурса.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_tooltip
+=> nrel_ui_knowledge_text: [concept_ui_tooltip | tooltip | string | по умолчанию: "" | смысл: Подсказка, показываемая при наведении на компонент.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_action_id
+=> nrel_ui_knowledge_text: [concept_ui_action_id | action_id | string | по умолчанию: "" | смысл: Идентификатор действия, инициируемого компонентом; осмысленно прежде всего для кнопок и пунктов меню.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_background_color
+=> nrel_ui_knowledge_text: [concept_ui_background_color | background_color | color | по умолчанию: #f4f4f4 | смысл: Цвет фона компонента в формате CSS.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_color
+=> nrel_ui_knowledge_text: [concept_ui_color | color | color | по умолчанию: #1a1a1a | смысл: Цвет текста компонента в формате CSS.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_border_color
+=> nrel_ui_knowledge_text: [concept_ui_border_color | border_color | color | по умолчанию: #6f6f6f | смысл: Цвет рамки компонента в формате CSS.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_border_width
+=> nrel_ui_knowledge_text: [concept_ui_border_width | border_width | number | по умолчанию: 1 | смысл: Толщина рамки в пикселях.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_border_style
+=> nrel_ui_knowledge_text: [concept_ui_border_style | border_style | enum | по умолчанию: solid | смысл: Стиль рамки компонента. | допустимо: solid / dashed / none];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_corner_radius
+=> nrel_ui_knowledge_text: [concept_ui_corner_radius | corner_radius | number | по умолчанию: 0 | смысл: Радиус скругления углов в пикселях.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_font_size
+=> nrel_ui_knowledge_text: [concept_ui_font_size | font_size | number | по умолчанию: 13 | смысл: Размер шрифта текста в пикселях.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_font_weight
+=> nrel_ui_knowledge_text: [concept_ui_font_weight | font_weight | enum | по умолчанию: normal | смысл: Насыщенность шрифта. | допустимо: normal / bold];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_text_align
+=> nrel_ui_knowledge_text: [concept_ui_text_align | text_align | enum | по умолчанию: left | смысл: Выравнивание текста внутри компонента. | допустимо: left / center / right];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_padding
+=> nrel_ui_knowledge_text: [concept_ui_padding | padding | number | по умолчанию: 0 | смысл: Внутренний отступ от границ компонента до содержимого.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_margin
+=> nrel_ui_knowledge_text: [concept_ui_margin | margin | number | по умолчанию: 0 | смысл: Внешний отступ компонента от соседних элементов.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_min_width
+=> nrel_ui_knowledge_text: [concept_ui_min_width | min_width | number | по умолчанию: 0 | смысл: Минимальная ширина компонента; 0 — без ограничения.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_min_height
+=> nrel_ui_knowledge_text: [concept_ui_min_height | min_height | number | по умолчанию: 0 | смысл: Минимальная высота компонента; 0 — без ограничения.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_max_width
+=> nrel_ui_knowledge_text: [concept_ui_max_width | max_width | number | по умолчанию: 0 | смысл: Максимальная ширина компонента; 0 — без ограничения.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
+
+concept_ui_max_height
+=> nrel_ui_knowledge_text: [concept_ui_max_height | max_height | number | по умолчанию: 0 | смысл: Максимальная высота компонента; 0 — без ограничения.];
+=> nrel_ui_knowledge_source: [vodo4kin/ostis-ui-editor@f6eb4faf1808a636d3ef63764099338e4ca2f1bc:client/src/model/catalog.ts];;
