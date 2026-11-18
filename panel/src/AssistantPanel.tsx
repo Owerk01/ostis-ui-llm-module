@@ -211,8 +211,9 @@ export function AssistantPanel({
         }
       }
       if (!question) return
-      setMessages((previous) => previous.filter((message) => message.id !== messageId))
-      void run(question, false)
+      // Повтор — новый полный ход: пользовательское сообщение добавляется и
+      // локально, и в БЗ; прежний неуспешный ход остаётся в истории.
+      void run(question, true)
     },
     [messages, run],
   )

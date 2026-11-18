@@ -203,3 +203,13 @@ holdout 66.7% < 90%. Улучшение ответов возможно толь
 
 До: `ERR_MODULE_NOT_FOUND: actionResult.ts`, тест падал. После: 6 node-тестов,
 typecheck и E2E (`indicator_ms=81`, чипы, таймер 1,0 с, отмена) зелёные.
+
+## FIX-P1-5. Повтор не создаёт дубликаты
+
+Изменено: `retry()` в панели запускает `run(question, true)` — новый полный ход;
+признак `appendUser = true` добавляет пользовательское сообщение и локально, и в
+БЗ. Прежний unsuccessful-ход больше не удаляется из локальной истории. Статический
+тест `retry.test.ts`, контракт дополнен.
+
+До: `not ok 1 - retry creates a new full turn...`. После: 7 node-тестов,
+typecheck и `make test` зелёные.
