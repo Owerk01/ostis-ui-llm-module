@@ -1,0 +1,32 @@
+// Пять принципов разработки ПИ (проект, раздел 5). Тексты сжаты под бюджет промпта.
+// Класс concept_ui_development_principle объявлен в ui_dialog.scs.
+
+ui_principle_accessibility
+<- concept_ui_development_principle;
+=> nrel_main_idtf: [Принцип доступности] (* <- lang_ru;; *);
+=> nrel_ui_knowledge_text: [Простые средства разработки для разработчика и конечного пользователя; задача ставится запросом на естественном языке с визуальным уточнением.];
+=> nrel_ui_knowledge_source: [Проект, 5.1];;
+
+ui_principle_quick_learning
+<- concept_ui_development_principle;
+=> nrel_main_idtf: [Принцип быстрого освоения] (* <- lang_ru;; *);
+=> nrel_ui_knowledge_text: [Основная единица работы — абстрактная модель ПИ: задачи, объекты, события, ограничения; исходный код не обязателен.];
+=> nrel_ui_knowledge_source: [Проект, 5.2];;
+
+ui_principle_autonomous_changeability
+<- concept_ui_development_principle;
+=> nrel_main_idtf: [Принцип автономной изменяемости] (* <- lang_ru;; *);
+=> nrel_ui_knowledge_text: [Интерфейс меняется на целевой платформе без инструментальной среды по запросу пользователя; изменения выполняются над разрешёнными параметрами, регистрируются и обратимы.];
+=> nrel_ui_knowledge_source: [Проект, 5.3];;
+
+ui_principle_reuse
+<- concept_ui_development_principle;
+=> nrel_main_idtf: [Принцип многократного использования] (* <- lang_ru;; *);
+=> nrel_ui_knowledge_text: [Интерфейсы и компоненты хранятся в библиотеке как знания о назначении, свойствах и совместимости; поиск идёт и по назначению.];
+=> nrel_ui_knowledge_source: [Проект, 5.4];;
+
+ui_principle_semantic_compatibility
+<- concept_ui_development_principle;
+=> nrel_main_idtf: [Принцип семантической совместимости] (* <- lang_ru;; *);
+=> nrel_ui_knowledge_text: [Каждый значимый компонент связан со смысловой конструкцией базы знаний и имеет формальную спецификацию: понятия, события, предусловия и постусловия.];
+=> nrel_ui_knowledge_source: [Проект, 5.5];;

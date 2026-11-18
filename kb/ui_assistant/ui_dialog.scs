@@ -1,0 +1,34 @@
+// Конструкции диалога и знаний ассистента разработчика ПИ (AGENTS.md, 3.6).
+// Существующие идентификаторы (concept_ui_*, nrel_ui_contains и т.д.) здесь НЕ объявляются.
+
+concept_ui_dialog <- sc_node_class;;
+concept_ui_dialog_message <- sc_node_class;;
+concept_ui_user_message <- sc_node_class;;
+concept_ui_assistant_message <- sc_node_class;;
+concept_ui_dialog_message => nrel_inclusion: concept_ui_user_message;;
+concept_ui_dialog_message => nrel_inclusion: concept_ui_assistant_message;;
+
+concept_ui_knowledge <- sc_node_class;;
+concept_ui_development_principle <- sc_node_class;;
+concept_ui_development_stage <- sc_node_class;;
+concept_ui_environment_note <- sc_node_class;;
+concept_ui_knowledge => nrel_inclusion: concept_ui_development_principle;;
+concept_ui_knowledge => nrel_inclusion: concept_ui_development_stage;;
+concept_ui_knowledge => nrel_inclusion: concept_ui_environment_note;;
+
+action_answer_ui_development_question <- sc_node_class;;
+
+nrel_ui_dialog_message <- sc_node_norole_relation;;
+nrel_ui_message_time <- sc_node_norole_relation;;
+nrel_ui_message_state <- sc_node_norole_relation;;
+nrel_ui_answer_source <- sc_node_norole_relation;;
+nrel_ui_llm_model <- sc_node_norole_relation;;
+nrel_ui_prompt_version <- sc_node_norole_relation;;
+nrel_ui_knowledge_text <- sc_node_norole_relation;;
+nrel_ui_knowledge_source <- sc_node_norole_relation;;
+nrel_ui_dialog_context <- sc_node_norole_relation;;
+
+concept_ui_dialog
+=> nrel_main_idtf: [Диалог разработчика со средой] (* <- lang_ru;; *);;
+action_answer_ui_development_question
+=> nrel_main_idtf: [Ответить на вопрос разработчика по предметной области разработки ПИ] (* <- lang_ru;; *);;

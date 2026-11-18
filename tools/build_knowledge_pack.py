@@ -30,6 +30,13 @@ OVERRIDES_PATH = ROOT / "knowledge" / "purpose_overrides.json"
 PACK_PATH = ROOT / "knowledge" / "pack.json"
 PROVENANCE_PATH = ROOT / "knowledge" / "provenance.json"
 
+KNOWLEDGE_DIR = ROOT / "kb" / "ui_assistant"
+DOMAIN_FILES = {
+    "principles": ("ui_principles.scs", "concept_ui_development_principle"),
+    "methodology_stages": ("ui_methodology.scs", None),
+    "environment_notes": ("ui_environment.scs", "concept_ui_environment_note"),
+}
+
 RELATION_KINDS = {
     "nrel_ui_contains": "contains",
     "nrel_ui_has_component": "has_component",
@@ -52,6 +59,77 @@ def git_commit(path: Path) -> str:
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
+
+
+def parse_knowledge_scs(path: Path) -> list[dict[str, str]]:
+    """Разбирает наши .scs с одним знанием на блок (блоки разделены пустой строкой).
+
+    Ожидаемая форма блока (AGENTS.md, 3.6):
+        <idtf>
+        <- <class>;
+        => nrel_main_idtf: [<title>] (* <- lang_ru;; *);
+        => nrel_ui_knowledge_text: [<text>];
+        => nrel_ui_knowledge_source: [<source>];;
+    Текст знания — одна строка в квадратных скобках, без вложенных скобок.
+    """
+    if not path.exists():
+        return []
+
+    text_re = re.compile(r"nrel_ui_knowledge_text:\s*\[(.+?)\]", re.S)
+    source_re = re.compile(r"nrel_ui_knowledge_source:\s*\[(.+?)\]", re.S)
+    title_re = re.compile(r"nrel_main_idtf:\s*\[(.+?)\]", re.S)
+    class_re = re.compile(r"<-\s*(\w+)\s*;")
+
+    items: list[dict[str, str]] = []
+    blocks = re.split(r"\n\s*\n", path.read_text(encoding="utf-8"))
+    for block in blocks:
+        lines = [line.strip() for line in block.splitlines() if line.strip()]
+        lines = [line for line in lines if not line.startswith("//")]
+        if len(lines) < 2:
+            continue
+        idtf = lines[0]
+        if not re.fullmatch(r"\w+", idtf):
+            continue
+        class_match = class_re.search(block)
+        text_match = text_re.search(block)
+        if not class_match or not text_match:
+            continue
+        title_match = title_re.search(block)
+        source_match = source_re.search(block)
+        items.append(
+            {
+                "idtf": idtf,
+                "class": class_match.group(1),
+                "title_ru": title_match.group(1).strip() if title_match else idtf,
+                "text_ru": " ".join(text_match.group(1).split()),
+                "source_ru": " ".join(source_match.group(1).split())
+                if source_match
+                else "",
+                "file": path.name,
+            }
+        )
+    return items
+
+
+def load_domain_knowledge() -> tuple[dict[str, list[dict[str, str]]], dict[str, int]]:
+    """Собирает принципы, методику и сведения о среде из наших .scs."""
+    result: dict[str, list[dict[str, str]]] = {}
+    counts: dict[str, int] = {}
+
+    for section, (filename, class_filter) in DOMAIN_FILES.items():
+        items = parse_knowledge_scs(KNOWLEDGE_DIR / filename)
+        if class_filter is not None:
+            items = [item for item in items if item["class"] == class_filter]
+        elif filename == "ui_methodology.scs":
+            # Процессы методики (<- concept_ui_knowledge) идут перед этапами.
+            order = {"concept_ui_knowledge": 0, "concept_ui_development_stage": 1}
+            items.sort(key=lambda item: order.get(item["class"], 2))
+        for item in items:
+            item.pop("class", None)
+            item.pop("file", None)
+        result[section] = items
+        counts[section] = len(items)
+    return result, counts
 
 
 def run_ts_dump() -> dict[str, Any]:
@@ -133,7 +211,13 @@ def parse_catalog_md() -> dict[str, Any]:
     }
 
 
-def build_pack(dump: dict[str, Any], overrides: dict[str, Any], degraded: bool) -> dict[str, Any]:
+def build_pack(
+    dump: dict[str, Any],
+    overrides: dict[str, Any],
+    degraded: bool,
+    domain: dict[str, list[dict[str, str]]] | None = None,
+) -> dict[str, Any]:
+    domain = domain or {"principles": [], "methodology_stages": [], "environment_notes": []}
     generated_at = iso_now()
     type_overrides = overrides.get("types", {})
     prop_overrides = overrides.get("properties", {})
@@ -193,9 +277,9 @@ def build_pack(dump: dict[str, Any], overrides: dict[str, Any], degraded: bool) 
         "component_types": component_types,
         "properties": properties,
         "relations": relations,
-        "principles": [],
-        "methodology_stages": [],
-        "environment_notes": [],
+        "principles": domain["principles"],
+        "methodology_stages": domain["methodology_stages"],
+        "environment_notes": domain["environment_notes"],
     }
 
 
@@ -239,6 +323,22 @@ def update_provenance(pack: dict[str, Any], degraded: bool) -> None:
             "count": len(pack["relations"]),
         },
     }
+
+    domain_sources = {
+        "principles": ("ui_principles.scs", "Проект инструментальной среды, раздел 5"),
+        "methodology_stages": ("ui_methodology.scs", "Проект инструментальной среды, раздел 4"),
+        "environment_notes": ("ui_environment.scs", "Проект инструментальной среды, раздел 7"),
+    }
+    for block, (filename, source) in domain_sources.items():
+        provenance["knowledge_blocks"][block] = {
+            "repo": "local:ostis-ui-assistant",
+            "commit": None,
+            "file": f"kb/ui_assistant/{filename}",
+            "source": source,
+            "extracted_at": extracted_at,
+            "degraded": False,
+            "count": len(pack.get(block, [])),
+        }
     PROVENANCE_PATH.write_text(
         json.dumps(provenance, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -256,6 +356,9 @@ def main() -> int:
     args = parser.parse_args()
 
     overrides = json.loads(OVERRIDES_PATH.read_text(encoding="utf-8"))
+    domain, domain_counts = load_domain_knowledge()
+    if not all(domain_counts.values()):
+        print(f"WARN: неполные domain-знания: {domain_counts}", file=sys.stderr)
     degraded = False
 
     if args.dump:
@@ -272,7 +375,7 @@ def main() -> int:
         dump = parse_catalog_md()
         degraded = True
 
-    pack = build_pack(dump, overrides, degraded)
+    pack = build_pack(dump, overrides, degraded, domain=domain)
     PACK_PATH.write_text(
         json.dumps(pack, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -281,7 +384,10 @@ def main() -> int:
 
     print(
         f"pack: {len(pack['component_types'])} типов, "
-        f"{len(pack['properties'])} свойств, {len(pack['relations'])} отношений"
+        f"{len(pack['properties'])} свойств, {len(pack['relations'])} отношений, "
+        f"{len(pack['principles'])} принципов, "
+        f"{len(pack['methodology_stages'])} этапов, "
+        f"{len(pack['environment_notes'])} сведений о среде"
     )
     print(f"pack_version: {pack['pack_version']} (degraded={degraded})")
     print(f"записано: {PACK_PATH}")
