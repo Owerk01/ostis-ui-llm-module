@@ -5,15 +5,19 @@
 
 Контракт этапа — [`AGENTS.md`](AGENTS.md). Ход работ — [`PROGRESS.md`](PROGRESS.md).
 
-> Сейчас реализованы вехи **M0** (платформа) и **M1** (локальная модель,
-> knowledge pack, FastAPI-сервис, изолированная панель). Работают:
-> - режим `direct-http` (отладочный) с потоковым SSE;
-> - ответы по каталогу: 16 типов, 27 свойств, 4 отношения;
+> Реализованы вехи **M0** (платформа), **M1** (локальная модель, knowledge
+> pack, FastAPI-сервис, панель) и **M2** (знания в БЗ, sc-агент, транспорт
+> `sc-memory`). Работают:
+> - боевой режим `sc-memory`: панель → действие в БЗ → sc-агент → LLM →
+>   ответ и журнал в БЗ → панель;
+> - отладочный режим `direct-http` с потоковым SSE;
+> - ответы по каталогу (16 типов, 27 свойств, 4 отношения), 5 принципов,
+>   методика и устройство среды;
 > - пост-валидация идентификаторов и чипы оснований;
 > - отмена, таймауты, ошибки LLM, повтор запроса.
 >
-> В M2 появятся знания в БЗ, sc-агент и транспорт `sc-memory`; в M3 — gold-набор
-> и метрики качества.
+> В M3 — gold-набор и метрики качества, в M4 — встраивание и финальная
+> документация.
 
 ## Быстрый старт (Linux)
 
@@ -29,19 +33,31 @@ make machine      # sc-machine на 127.0.0.1:8090
 make ollama       # Ollama с настройками из AGENTS.md 2.3
 make pull         # qwen3.5:4b (если ещё нет)
 
-make pack         # knowledge/pack.json из каталога редактора
-make service      # FastAPI на 127.0.0.1:8770 (отдельный терминал)
-make panel        # панель на 127.0.0.1:5173 (отдельный терминал)
+make pack         # knowledge/pack.json + generated .scs из каталога редактора
+make kb-load      # пересобрать БЗ с kb/ui_assistant и поднять sc-machine
+make agent        # sc-агент (боевой режим sc-memory, отдельный терминал)
+make panel        # панель на http://localhost:5173/ (отдельный терминал)
 ```
 
-Открыть `http://127.0.0.1:5173/`, задать вопрос, например
-«Чем `concept_ui_button` отличается от `concept_ui_menu_item`?».
+Открыть `http://localhost:5173/`, выбрать транспорт `sc-memory` (он выбран по
+умолчанию), задать вопрос, например «Чем `concept_ui_button` отличается от
+`concept_ui_menu_item`?». Запрос и ответ сохраняются в БЗ.
+
+Отладочный режим вместо агента:
+
+```bash
+make service      # FastAPI на 127.0.0.1:8770
+```
+
+и переключить транспорт в dev-стенде на `direct-http`.
 
 Проверка:
 
 ```bash
-make test         # pytest сервиса + typecheck панели
+make test         # pytest сервиса + коллизии идентификаторов + typecheck панели
 make smoke        # чтение БЗ (нужна sc-machine)
+make smoke-action # действие из скрипта → ответ в БЗ (нужен make agent)
+E2E_MODE=sc-memory .venv/bin/python tools/e2e_panel.py   # headless Chrome
 ```
 
 Повторный `make up` не пересобирает БЗ и не скачивает модель заново;
@@ -99,7 +115,7 @@ Dev-стенд позволяет сменить адрес сервиса и п
 external/            read-only клоны репозиториев команды (gitignore)
 platform/            repo.path и конфигурация sc-machine
 knowledge/           pack.json, provenance.json, prompt_v1.md, purpose_overrides.json
-kb/ui_assistant/     наши конструкции диалога и знаний (M2)
+kb/ui_assistant/     наши конструкции диалога и знаний + generated тексты каталога
 tools/               setup, сборка БЗ, pack, смоук
 service/             Python-сервис: LLM, знания, валидация, FastAPI
 panel/               панель чата React + dev-стенд
@@ -112,6 +128,7 @@ eval/                gold-набор и отчёты (M3)
 - `external/` не редактируется; схема UI не копируется и не переопределяется.
 - На этапе 1 ассистент **не изменяет** модель интерфейса и не вызывает
   `action_translate_sc_to_html`.
-- Знания в M1 берутся из `knowledge/pack.json`, поэтому `/health` честно
-  показывает `knowledge_source: fallback`; чтение из БЗ — M2.
+- В режиме `sc-memory` знания читаются из БЗ (`kb`) и только при её
+  недоступности берутся из `knowledge/pack.json` (`fallback`, с явной пометкой
+  в панели и `/health`).
 - Для запуска не требуется Docker.

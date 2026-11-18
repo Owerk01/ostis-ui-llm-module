@@ -1,6 +1,6 @@
 # 02. Знания
 
-Статус: черновик M1. Полная инструкция «с нуля» заполняется в M4-T3.
+Статус: M2 — знания читаются из БЗ, pack остаётся локальным fallback.
 
 ## Источники
 
@@ -15,9 +15,12 @@
 
 ## Knowledge pack (M1)
 
-`knowledge/pack.json` — нормализованная выжимка каталога, которая целиком
-подаётся в системный промпт. RAG и эмбеддингов нет: при `num_ctx=8192` блок
-знаний занимает ~2570 токенов (оценка `len/3`), системный промпт — ~3113.
+`knowledge/pack.json` — нормализованная выжимка каталога и домен-знаний,
+которая целиком подаётся в системный промпт. RAG и эмбеддингов нет: при
+`num_ctx=8192` блок знаний занимает **3494 токена** (оценка `len/3`), системный
+промпт — ~4021. Это верхняя граница бюджета 3500; при её превышении
+`render.py` усекает `methodology_stages` и `environment_notes` до заголовков
+и пишет WARN.
 
 Состав:
 
@@ -27,8 +30,13 @@
   значения, `meaning_ru`;
 - `relations` — 4 отношения: `nrel_ui_contains`, `nrel_ui_has_component`,
   `nrel_ui_id`, `nrel_ui_value`;
-- `principles`, `methodology_stages`, `environment_notes` — пусты в M1,
-  заполняются в M2-T2 из текстов проекта через БЗ.
+- `principles` — 5 принципов (§5 проекта);
+- `methodology_stages` — 1 узел «процессы методики» + 10 этапов (§4);
+- `environment_notes` — 4 сведения об устройстве среды (§7).
+
+Русские тексты принципов/методики/среды живут в `kb/ui_assistant/*.scs`.
+`build_knowledge_pack.py` парсит их в pack, чтобы режимы `kb` и `fallback`
+давали одинаковый промпт и не расходились.
 
 Русские назначения и смыслы хранятся отдельно в
 `knowledge/purpose_overrides.json`, чтобы не теряться при пересборке:
@@ -65,30 +73,55 @@ python tools/build_knowledge_pack.py
 | Изменились defaults | пересобрать pack; тест `test_pack.py` проверит типы значений |
 | Коммит external обновился | `provenance.json` обновится сам; зафиксировать новый хеш в PROGRESS |
 
-## Сборка БЗ в M0/M1
+## Сборка БЗ
 
-`platform/repo.path` ссылается на external-файлы напрямую; пути разрешаются
-относительно каталога `platform/`, поэтому используются `../external/...`.
+`platform/repo.path` ссылается на external-файлы и наш фрагмент напрямую;
+пути разрешаются относительно каталога `platform/`, поэтому используются
+`../external/...` и `../kb/ui_assistant`.
+
 Сборка: `make kb` → `.runtime/kb.bin` (~3 мин). Пересборка требует остановленной
 sc-machine: `make kb` проверяет pid и отказывается перезаписывать открытую БЗ.
-Наши знания (`kb/ui_assistant/`) добавляются в repo.path в M2-T5.
+Явная цель с перезапуском и смоуком — `make kb-load`.
 
-## M1: откуда берутся ответы
+### Файлы нашего фрагмента
 
-- Сервис читает `knowledge/pack.json` при старте.
-- `/health.knowledge_source` в M1 всегда `fallback`, потому что чтение из
-  sc-памяти появится в M2-T6. Это честная деградация, а не ошибка.
-- Панель показывает баннер «Знания загружены из локальной копии, БЗ недоступна».
-- `pack_version` — ISO-время сборки; он попадает в журнал и в событие `done`.
+| Файл | Содержимое |
+|---|---|
+| `kb/ui_assistant/ui_dialog.scs` | классы диалога, знаний, 9 `nrel_ui_*`, класс действия |
+| `kb/ui_assistant/ui_principles.scs` | 5 принципов с текстом и provenance |
+| `kb/ui_assistant/ui_methodology.scs` | процесс методики + 10 этапов |
+| `kb/ui_assistant/ui_environment.scs` | 4 сведения об устройстве среды |
+| `kb/ui_assistant/generated/ui_catalog_knowledge.scs` | 16+27 текстов на существующих классах |
 
-## M2: что добавится
+Сгенерированный файл **ничего не объявляет**: только
+`=> nrel_ui_knowledge_text` и `=> nrel_ui_knowledge_source` на классах
+редактора. Это проверяет `tools/check_id_collisions.py` и тест
+`test_generated_scs_attaches_without_declaring`.
 
-1. `kb/ui_assistant/*.scs` — принципы, методика, устройство среды.
-2. `kb/ui_assistant/generated/ui_catalog_knowledge.scs` — навешивание
-   `nrel_ui_knowledge_text`/`nrel_ui_knowledge_source` на существующие классы
-   (без объявления чужих узлов).
-3. `knowledge/kb_reader.py` — чтение знаний из sc-памяти с fallback на pack.
-4. `/health.knowledge_source = kb`, `kb_partial` при неполных текстах.
+## Откуда берутся ответы (M2)
+
+- При `KNOWLEDGE_SOURCE=kb` сервис при старте читает:
+  - тексты 16 типов и 27 свойств — `nrel_ui_knowledge_text` у классов
+    `concept_ui_*`;
+  - принципы — экземпляры `concept_ui_development_principle`;
+  - методику — `concept_ui_knowledge` (процессы) + `concept_ui_development_stage`;
+  - среду — `concept_ui_environment_note`.
+- Если у отдельного класса текста нет, берётся запись из `pack.json`, а в
+  `/health` выставляется `kb.partial = true` и список `kb.missing`.
+- Если sc-память недоступна, сервис работает на `pack.json`
+  (`knowledge_source = fallback`), панель показывает «Знания из локальной копии».
+- `pack_version` — ISO-время сборки; он попадает в журнал, в
+  `nrel_ui_prompt_version` сообщения и в событие `done`.
+
+## Обновление знаний
+
+1. Правки текстов — в `kb/ui_assistant/*.scs` (одна строка в `[...]`, без
+   переносов). После правки: `make pack` → `make kb-load`.
+2. Правки каталога приходят из `external/ostis-ui-editor`. После обновления
+   коммита: `make pack` (pack + generated `.scs` + проверка коллизий) →
+   `make kb-load` → `make test`.
+3. Если в БЗ нет текста для класса, сервис не падает: он берёт pack и честно
+   помечает частичную деградацию. Проверка: `curl /health | jq .kb`.
 
 ## Проверка целостности
 
