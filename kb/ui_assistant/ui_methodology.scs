@@ -4,65 +4,65 @@
 ui_methodology_processes
 <- concept_ui_knowledge;
 => nrel_main_idtf: [Три процесса методики] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Начальная разработка интерфейса, редактирование разработчиком после начала использования и автоматическая адаптация при эксплуатации без участия разработчика.];
+=> nrel_ui_knowledge_text: [Начальная разработка, редактирование разработчиком и автоматическая адаптация при эксплуатации.];
 => nrel_ui_knowledge_source: [Проект, 4];;
 
 ui_stage_initial_task
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Постановка задачи] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Разработчик задаёт предметную область, сценарии, целевую группу и визуальный стиль.];
+=> nrel_ui_knowledge_text: [Разработчик задаёт область, сценарии, целевую группу и стиль.];
 => nrel_ui_knowledge_source: [Проект, 4, начальная разработка, шаг 1];;
 
 ui_stage_initial_generation
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Автоматическое построение ПИ] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Среда сопоставляет область с онтологией, строит абстрактную структуру, модель пользователя и визуальные компоненты.];
+=> nrel_ui_knowledge_text: [Среда сопоставляет область с онтологией и строит структуру, модель пользователя и компоненты.];
 => nrel_ui_knowledge_source: [Проект, 4, начальная разработка, шаг 2];;
 
 ui_stage_initial_testing
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Тестирование построенного ПИ] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Разработчик проверяет сценарий и логику; несоответствия запускают редактирование.];
+=> nrel_ui_knowledge_text: [Разработчик проверяет сценарий и логику; несоответствия ведут к редактированию.];
 => nrel_ui_knowledge_source: [Проект, 4, начальная разработка, шаг 3];;
 
 ui_stage_editing_request
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Запрос на изменение] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Разработчик определяет изменяемую часть интерфейса и цель изменения.];
+=> nrel_ui_knowledge_text: [Разработчик определяет часть интерфейса и цель изменения.];
 => nrel_ui_knowledge_source: [Проект, 4, редактирование, шаг 1];;
 
 ui_stage_editing_apply
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Внесение изменений] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [В визуальном редакторе выбирают область и вид изменения: стиль, добавление, удаление, перемещение.];
+=> nrel_ui_knowledge_text: [В редакторе выбирают область и вид изменения: стиль, добавление, удаление, перемещение.];
 => nrel_ui_knowledge_source: [Проект, 4, редактирование, шаг 2];;
 
 ui_stage_editing_testing
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Тестирование изменений] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Разработчик проверяет корректность и при необходимости повторяет этапы.];
+=> nrel_ui_knowledge_text: [Разработчик проверяет корректность и повторяет этапы при необходимости.];
 => nrel_ui_knowledge_source: [Проект, 4, редактирование, шаг 3];;
 
 ui_stage_adaptation_collect
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Сбор данных о взаимодействии] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Система отслеживает время действий, ошибки и обращения к подсказкам и пишет их в базу знаний.];
+=> nrel_ui_knowledge_text: [Система фиксирует время действий, ошибки и обращения к подсказкам в базе знаний.];
 => nrel_ui_knowledge_source: [Проект, 4, адаптация, шаг 1];;
 
 ui_stage_adaptation_decision
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Решение об адаптации] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [По модели пользователя и правилам онтологии система выбирает необходимость и вид изменения.];
+=> nrel_ui_knowledge_text: [По модели пользователя и онтологии система выбирает необходимость и вид изменения.];
 => nrel_ui_knowledge_source: [Проект, 4, адаптация, шаг 2];;
 
 ui_stage_adaptation_rebuild
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Перестроение ПИ] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Система меняет абстрактную структуру и визуальные компоненты без участия разработчика.];
+=> nrel_ui_knowledge_text: [Система меняет структуру и компоненты без разработчика.];
 => nrel_ui_knowledge_source: [Проект, 4, адаптация, шаг 3];;
 
 ui_stage_adaptation_update_model
 <- concept_ui_development_stage;
 => nrel_main_idtf: [Обновление модели пользователя] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Модель пользователя дополняется сведениями об изменении и его влиянии.];
+=> nrel_ui_knowledge_text: [Модель пользователя дополняется сведениями об изменении и влиянии.];
 => nrel_ui_knowledge_source: [Проект, 4, адаптация, шаг 4];;

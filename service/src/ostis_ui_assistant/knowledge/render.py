@@ -100,10 +100,92 @@ FEW_SHOT: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            "В базе знаний среды нет сведений о компоненте для графиков: каталог содержит "
-            "только перечисленные типы, и я не создаю новые системные идентификаторы. "
-            "Могу рассказать о ближайших по назначению типах из каталога — например, "
-            "`concept_ui_image` или `concept_ui_list`."
+            "В базе знаний среды нет сведений о компоненте для графиков. Я не создаю "
+            "новые системные идентификаторы и не предлагаю другие типы в качестве замены. "
+            "Могу ответить о типах и свойствах, которые реально есть в каталоге."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "У divider нет action_id?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "Нет, это не так. Все 27 свойств из раздела `catalog_properties`, включая "
+            "`action_id` и `background_color`, применимы к каждому типу компонентов. "
+            "`concept_ui_divider` отличается назначением — он разделяет группы "
+            "элементов, а не инициирует действия."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Из каких этапов состоит автоматическая адаптация?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "Автоматическая адаптация состоит ровно из 4 этапов: сбор данных о "
+            "взаимодействии, решение об адаптации, перестроение ПИ и обновление "
+            "модели пользователя. Других этапов в этом процессе нет."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Какие значения выбирает concept_ui_slider?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "Числовое значение. Границы диапазона каталогом не заданы; значение "
+            "хранится в `text_value`."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Где заданы границы диапазона у slider?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "В каталоге границы числового диапазона для `concept_ui_slider` не заданы; "
+            "значение хранится в `text_value`. Размеры компонента к диапазону значения "
+            "не относятся."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Как модули ПИ и решателя задач взаимодействуют?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "Они взаимодействуют только через базу знаний: она хранит требования, "
+            "модели, правила и журнал и выступает единственным каналом связи."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Какой компонент подходит для встроенного видеоплеера?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "В базе знаний среды нет сведений о компоненте для видеоплеера. Я не "
+            "предлагаю замену из каталога и не перечисляю типы, потому что ни один "
+            "из них не описан как видеоплеер."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Из каких этапов состоит начальная разработка?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "Начальная разработка состоит из 3 этапов: `ui_stage_initial_task` — "
+            "постановка задачи, `ui_stage_initial_generation` — автоматическое "
+            "построение ПИ, `ui_stage_initial_testing` — тестирование построенного ПИ."
         ),
     },
 ]
@@ -234,6 +316,29 @@ def _render_knowledge_items(
     return "\n".join(lines)
 
 
+PROCESS_TITLES = {
+    "initial": "начальная разработка",
+    "editing": "редактирование",
+    "adaptation": "автоматическая адаптация",
+}
+
+
+def render_methodology(pack: dict[str, Any], truncate: bool = False) -> str:
+    """Методика сгруппирована по процессам; счётчики указаны в заголовках."""
+    stages = pack.get("methodology_stages", [])
+    lines: list[str] = []
+    overview = [item for item in stages if item.get("idtf") == "ui_methodology_processes"]
+    if overview:
+        lines.extend(_render_knowledge_items(overview, titles_only=truncate).splitlines())
+    for process, title in PROCESS_TITLES.items():
+        items = [item for item in stages if item.get("process") == process]
+        if not items:
+            continue
+        lines.append(f"процесс: {title} | этапов: {len(items)}")
+        lines.extend(_render_knowledge_items(items, titles_only=truncate).splitlines())
+    return "\n".join(lines)
+
+
 def render_sections(pack: dict[str, Any], truncate: bool = False) -> dict[str, str]:
     return {
         "component_types": render_component_types(pack),
@@ -242,9 +347,7 @@ def render_sections(pack: dict[str, Any], truncate: bool = False) -> dict[str, s
         "principles": _render_knowledge_items(
             pack.get("principles", []), titles_only=truncate, count_label="принципов"
         ),
-        "methodology_stages": _render_knowledge_items(
-            pack.get("methodology_stages", []), titles_only=truncate
-        ),
+        "methodology_stages": render_methodology(pack, truncate=truncate),
         "environment_notes": _render_knowledge_items(
             pack.get("environment_notes", []), titles_only=truncate
         ),

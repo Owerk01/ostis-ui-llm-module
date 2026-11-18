@@ -12,6 +12,7 @@ from ostis_ui_assistant.knowledge.render import (
     estimate_tokens,
     render_component_types,
     render_properties,
+    render_sections,
     sanitize_question,
 )
 
@@ -61,6 +62,17 @@ def test_few_shot_pairs_preserved(pack: dict, template: str) -> None:
     for pair in zip(body[::2], body[1::2]):
         assert pair[0]["role"] == "user"
         assert pair[1]["role"] == "assistant"
+
+
+def test_methodology_grouped_with_counts(pack: dict) -> None:
+    """Этапы методики сгруппированы по процессам, счётчики явны в заголовках."""
+    text = render_sections(pack)["methodology_stages"]
+    assert "процесс: начальная разработка | этапов: 3" in text
+    assert "процесс: редактирование | этапов: 3" in text
+    assert "процесс: автоматическая адаптация | этапов: 4" in text
+    for item in pack["methodology_stages"]:
+        if item["idtf"] != "ui_methodology_processes":
+            assert item.get("process") in {"initial", "editing", "adaptation"}
 
 
 def test_unknown_identifiers_in_question_are_sanitized() -> None:

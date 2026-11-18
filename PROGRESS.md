@@ -83,3 +83,53 @@ npm test: 2 passed, 0 failed
 e2e: indicator_ms=86; timer: 1,0 с; cancel: сообщение помечено «Отменено»
 screenshot: docs/screenshots/m2-panel-sc.png
 ```
+
+## FIX-P0-3. Фактические ошибки и недостоверная оценка
+
+Изменено:
+
+- `tools/build_knowledge_pack.py`: этапы методики получают поле `process`
+  (`initial` / `editing` / `adaptation`) из idtf; заметка о процессах остаётся
+  отдельной записью; provenance дополнена источником HTML-транслятора.
+- `render.py`: методика рендерится с заголовками процессов и счётчиками этапов;
+  добавлены few-shot про divider/action_id, этапы адаптации, slider, этапы
+  начальной разработки, interaction через БЗ и отказ для видеоплеера.
+- `knowledge/prompt_v4.md`: убрана клаузула «завершающие этапы», добавлены
+  запреты переносить этапы между процессами, называть idtf разделами документа,
+  предлагать замену при отказе, окончательные проверки перед ответом; v3 сохранён.
+- `purpose_overrides.json` и `ui_methodology.scs`/`ui_environment.scs`: уточнены
+  slider/divider/sound, сжаты тексты, добавлена заметка об HTML-представлении.
+  Бюджет ЗНАНИЙ — ровно 3500 токенов, усечение не срабатывает.
+- Минимальный P1-1: `ENVIRONMENT_IDENTIFIERS` в whitelist; жёсткий guard заменён
+  на санитизацию + вызов LLM; детерминированный отказ только при пустом остатке.
+- Оценка: `tools/run_eval.py` получил `--cold`, хэши выборок/промпта, `tainted`,
+  `unknown_id_in_final_rate`, `injection_resistance`, `guard_sanitized_rate`,
+  word-boundary проверку ключей свойств. Добавлены `eval/holdout_questions.jsonl`
+  (29 вопросов, 5 инъекций), `eval/frozen.json`, `eval/manual_review.jsonl`
+  (75 разметок). Проверки dev усилены по Приложению B.
+- Документы: `docs/01_CONTRACTS.md` (определения метрик, ENVIRONMENT_IDENTIFIERS),
+  `docs/02_KNOWLEDGE.md` (группировка методики), `docs/03_EVAL.md` (честные
+  результаты), README (убрано «Accuracy 100%»).
+
+До исправления — `test_methodology_grouped_with_counts`:
+
+```
+AssertionError: assert 'процесс: начальная разработка | этапов: 3' in 'ui_methodology_processes | ...'
+1 failed
+```
+
+После исправления:
+
+```
+make test: 56 passed, 1 skipped, 3 deselected; npm typecheck + тест таймера — ok
+knowledge_tokens 3500, truncated []
+dev warm: accuracy 93.5%, refusal 100%, p95 1437 мс
+dev cold: accuracy 93.5%, p95 5980 мс
+holdout (1 прогон): accuracy 86.2%, refusal 66.7%, p95 1295 мс
+factual_accuracy 71/75 = 0.947; incorrect_count = 2
+```
+
+Честно не выполнено: `incorrect_count = 0` (ошибки `q003`, `q022`) и отказы на
+holdout 66.7% < 90%. Улучшение ответов возможно только через промпт и знания;
+проверки holdout и пороги не менялись после прогона. Дальнейшее улучшение
+ответов требует отдельной итерации промпта с новым зафиксированным прогоном holdout.

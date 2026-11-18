@@ -4,23 +4,29 @@
 ui_env_tool_modules
 <- concept_ui_environment_note;
 => nrel_main_idtf: [Модули инструментальной среды] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Модуль ПИ (диалог, визуальный редактор, предпросмотр), модуль решателя задач и модуль базы знаний.];
+=> nrel_ui_knowledge_text: [Модули: ПИ (диалог, редактор, предпросмотр), решатель задач и база знаний.];
 => nrel_ui_knowledge_source: [Проект, 7.1];;
 
 ui_env_solver_modules
 <- concept_ui_environment_note;
 => nrel_main_idtf: [Модули решателя задач] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Интерпретация запросов, построение, изменение, проверка интерфейса и передача знаний.];
+=> nrel_ui_knowledge_text: [Интерпретация запросов, построение, изменение, проверка и передача знаний.];
 => nrel_ui_knowledge_source: [Проект, 7.1];;
 
 ui_env_kb_module
 <- concept_ui_environment_note;
 => nrel_main_idtf: [База знаний как посредник] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Единое хранилище требований, моделей, правил, версий и журнала; модуль ПИ и решатель задач взаимодействуют только через неё.];
+=> nrel_ui_knowledge_text: [Хранилище требований, моделей, правил, версий и журнала; ПИ и решатель взаимодействуют только через него.];
 => nrel_ui_knowledge_source: [Проект, 7.1];;
 
 ui_env_target_system
 <- concept_ui_environment_note;
 => nrel_main_idtf: [Целевая система и адаптация] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Модуль ПИ исполняет и изменяет интерфейс; адаптацию выполняют модули сбора, модели пользователя, решения и формирования изменения.];
+=> nrel_ui_knowledge_text: [Модуль ПИ исполняет интерфейс; адаптацию выполняют модули сбора, модели, решения и формирования изменения.];
 => nrel_ui_knowledge_source: [Проект, 7.2–7.4];;
+
+ui_env_html_representation
+<- concept_ui_environment_note;
+=> nrel_main_idtf: [HTML-представление компонентов] (* <- lang_ru;; *);
+=> nrel_ui_knowledge_text: [Компоненты могут иметь HTML-представление: nrel_html_template — шаблон, nrel_html_parameter_id — параметры, nrel_html_representation — результат. Трансляцию выполняет отдельный агент действием action_translate_sc_to_html; ассистент его не вызывает.];
+=> nrel_ui_knowledge_source: [Glentas/ostis-ui@a673766:translators/HTMLTranslatorModule/keynodes/HTMLTranslatorKeynodes.hpp];;

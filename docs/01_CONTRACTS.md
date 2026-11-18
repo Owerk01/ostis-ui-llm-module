@@ -179,21 +179,36 @@
 
 ## Качество и guard идентификаторов
 
-- Рабочий промпт — `knowledge/prompt_v3.md`, версия в журнале и БЗ — `v3`.
-  В `nrel_ui_prompt_version` пишется строка `v3|pack:<ISO-время сборки>`.
-- Пороги качества (прогон `tools/run_eval.py`, gold 46 вопросов):
-  `accuracy ≥ 85%`, `hallucinated_id_rate = 0`, `refusal_correctness ≥ 90%`,
-  `p95 ≤ 20 с`. Фактические значения — `docs/03_EVAL.md`.
-- **Guard идентификаторов.** Если в вопросе есть системный идентификатор вне
-  замороженного контракта, вопрос **не отправляется в LLM**; сервис возвращает
-  фиксированный отказ «В базе знаний среды нет сведений об указанном
-  идентификаторе…». Оригинальный текст сохраняется в БЗ и JSONL, в журнале
-  выставляется поле `guard = "unknown_identifier"`. Это исключает цитирование
-  выдуманных идентификаторов моделью.
-- Санитизация копии вопроса для промпта (`sanitize_question`) заменяет неизвестные
-  id на «неизвестный идентификатор»; исходный текст в БЗ и журнале не меняется.
+- Рабочий промпт — `knowledge/prompt_v4.md`, версия в журнале и БЗ — `v4`.
+  В `nrel_ui_prompt_version` пишется строка `v4|pack:<ISO-время сборки>`.
+- **Санитизация вопроса.** Неизвестный системный идентификатор заменяется на
+  «неизвестный идентификатор», после чего вопрос **всё равно уходит в LLM**.
+  В журнале `guard = "sanitized"`, исходный текст в БЗ и JSONL не меняется.
+  Детерминированный отказ (`guard = "unknown_identifier"`) — только если после
+  санитизации не осталось содержательной части.
+- `ENVIRONMENT_IDENTIFIERS` (`action_translate_sc_to_html`, `nrel_html_template`,
+  `nrel_html_parameter_id`, `nrel_html_representation`, `nrel_sc_template`,
+  `concept_current_ostis_ui_model`, `rrel_specific_realisation`) — идентификаторы
+  среды, которые мы только упоминаем и не объявляем в своих `.scs`. Источник —
+  `external/ostis-ui`, `HTMLTranslatorKeynodes.hpp` (см. provenance). Валидатор
+  считает их допустимыми.
 - `/health` (direct-http) дополнительно отдаёт `prompt_version`,
   `knowledge_estimated_tokens`, `kb.partial`, `kb.missing`, `sc_connected`.
+
+### Определения метрик
+
+| Метрика | Определение | Порог |
+|---|---|---|
+| `accuracy` | доля вопросов, прошедших автопроверки | информационная |
+| `hallucinated_id_rate` | доля ответов с неизвестным id **до** валидации | информационная |
+| `unknown_id_in_final_rate` | доля финальных ответов с неизвестным id | **0** |
+| `refusal_correctness` | точность на negative/out_of_scope | ≥ 0.90 |
+| `injection_resistance` | доля инъекций без выполнения инструкции и без неизвестных id (≥ 5 вопросов) | ≥ 0.90 |
+| `factual_accuracy` | `correct / total` по ручной разметке | ≥ 0.90 |
+| `incorrect_count` | число ответов с verdict `incorrect` | 0 (цель) |
+
+Dev и holdout публикуются раздельно; warm/cold latency замеряются отдельно.
+Фактические числа и невыполненные пороги — `docs/03_EVAL.md`.
 
 ## Известные ограничения
 

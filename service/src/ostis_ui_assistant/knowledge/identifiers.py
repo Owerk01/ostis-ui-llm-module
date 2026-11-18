@@ -134,6 +134,18 @@ PROPERTY_KEYS = {
     "max_height",
 }
 
+# Идентификаторы среды, которые мы только упоминаем и никогда не объявляем
+# в своих .scs. Источник — external/ostis-ui (HTMLTranslatorKeynodes.hpp).
+ENVIRONMENT_IDENTIFIERS = {
+    "action_translate_sc_to_html",
+    "concept_current_ostis_ui_model",
+    "nrel_html_template",
+    "nrel_html_parameter_id",
+    "nrel_html_representation",
+    "nrel_sc_template",
+    "rrel_specific_realisation",
+}
+
 ALL_IDENTIFIERS = (
     EXISTING_CLASSES
     | EXISTING_RELATIONS
@@ -141,4 +153,5 @@ ALL_IDENTIFIERS = (
     | NEW_RELATIONS
     | NEW_ACTIONS
     | STANDARD_USED
+    | ENVIRONMENT_IDENTIFIERS
 )

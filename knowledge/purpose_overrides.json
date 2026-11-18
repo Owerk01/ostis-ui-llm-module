@@ -1,216 +1,216 @@
 {
- "schema_version": 1,
- "note": "Русские назначения типов, смыслы свойств и типы значений. Хранятся отдельно, чтобы не теряться при пересборке pack.",
- "types": {
-  "image": {
-   "purpose_ru": "Отображает изображение из ресурса, указанного в text_value."
+  "schema_version": 1,
+  "note": "Русские назначения типов, смыслы свойств и типы значений. Хранятся отдельно, чтобы не теряться при пересборке pack.",
+  "types": {
+    "image": {
+      "purpose_ru": "Отображает изображение из ресурса в text_value."
+    },
+    "sound": {
+      "purpose_ru": "Воспроизводит звук из ресурса в text_value. Все свойства, включая background_color и action_id, общие для всех типов."
+    },
+    "text": {
+      "purpose_ru": "Статический текст, содержимое в text_value."
+    },
+    "divider": {
+      "purpose_ru": "Разделитель групп элементов. Все 27 свойств, включая action_id и background_color, общие для всех типов; не инициирует действия."
+    },
+    "spacer": {
+      "purpose_ru": "Пустое пространство для отступов и выравнивания."
+    },
+    "menu": {
+      "purpose_ru": "Контейнер пунктов меню, дочерние через nrel_ui_contains."
+    },
+    "menu_bar": {
+      "purpose_ru": "Горизонтальная строка меню для пунктов concept_ui_menu_item."
+    },
+    "list": {
+      "purpose_ru": "Набор элементов, включается через nrel_ui_contains."
+    },
+    "scroll": {
+      "purpose_ru": "Контейнер с прокруткой содержимого."
+    },
+    "window": {
+      "purpose_ru": "Оконный контейнер для компонентов интерфейса."
+    },
+    "text_field": {
+      "purpose_ru": "Однострочный ввод текста, значение в text_value."
+    },
+    "text_area": {
+      "purpose_ru": "Многострочный ввод текста, значение в text_value."
+    },
+    "slider": {
+      "purpose_ru": "Числовое значение; границы в каталоге не заданы. min_width/max_width — размер, не диапазон. Значение в text_value."
+    },
+    "select": {
+      "purpose_ru": "Выбор одного значения из набора."
+    },
+    "button": {
+      "purpose_ru": "Кнопка инициирует действие; текст в text_value, действие в action_id."
+    },
+    "menu_item": {
+      "purpose_ru": "Пункт внутри concept_ui_menu или concept_ui_menu_bar, включается через nrel_ui_contains."
+    }
   },
-  "sound": {
-   "purpose_ru": "Воспроизводит звук из ресурса, указанного в text_value."
+  "properties": {
+    "name": {
+      "type": "string",
+      "default": null,
+      "default_note_ru": "зависит от типа",
+      "meaning_ru": "Имя компонента, отображаемое разработчику в редакторе."
+    },
+    "x": {
+      "type": "number",
+      "default": 24,
+      "meaning_ru": "Координата X левого верхнего угла компонента."
+    },
+    "y": {
+      "type": "number",
+      "default": 24,
+      "meaning_ru": "Координата Y левого верхнего угла компонента."
+    },
+    "width": {
+      "type": "number",
+      "default": null,
+      "default_note_ru": "зависит от типа",
+      "meaning_ru": "Ширина компонента в пикселях."
+    },
+    "height": {
+      "type": "number",
+      "default": null,
+      "default_note_ru": "зависит от типа",
+      "meaning_ru": "Высота компонента в пикселях."
+    },
+    "order": {
+      "type": "number",
+      "default": 1,
+      "meaning_ru": "Порядок слоя: чем больше значение, тем выше компонент."
+    },
+    "visible": {
+      "type": "boolean",
+      "default": true,
+      "meaning_ru": "Видимость компонента в представлении."
+    },
+    "enabled": {
+      "type": "boolean",
+      "default": true,
+      "meaning_ru": "Доступность для взаимодействия; false — неактивен."
+    },
+    "opacity": {
+      "type": "number",
+      "default": 1,
+      "allowed_values": "0…1",
+      "meaning_ru": "Непрозрачность: 0 — прозрачный, 1 — непрозрачный."
+    },
+    "text_value": {
+      "type": "string",
+      "default": "",
+      "meaning_ru": "Текст компонента; у image и sound — ресурс."
+    },
+    "tooltip": {
+      "type": "string",
+      "default": "",
+      "meaning_ru": "Подсказка при наведении на компонент."
+    },
+    "action_id": {
+      "type": "string",
+      "default": "",
+      "meaning_ru": "Идентификатор действия компонента."
+    },
+    "background_color": {
+      "type": "color",
+      "default": "#f4f4f4",
+      "default_note_ru": "может переопределяться типом компонента",
+      "meaning_ru": "Цвет фона компонента в формате CSS."
+    },
+    "color": {
+      "type": "color",
+      "default": "#1a1a1a",
+      "meaning_ru": "Цвет текста компонента в формате CSS."
+    },
+    "border_color": {
+      "type": "color",
+      "default": "#6f6f6f",
+      "meaning_ru": "Цвет рамки компонента в формате CSS."
+    },
+    "border_width": {
+      "type": "number",
+      "default": 1,
+      "meaning_ru": "Толщина рамки в пикселях."
+    },
+    "border_style": {
+      "type": "enum",
+      "default": "solid",
+      "allowed_values": [
+        "solid",
+        "dashed",
+        "none"
+      ],
+      "meaning_ru": "Стиль рамки компонента."
+    },
+    "corner_radius": {
+      "type": "number",
+      "default": 0,
+      "meaning_ru": "Радиус скругления углов в пикселях."
+    },
+    "font_size": {
+      "type": "number",
+      "default": 13,
+      "meaning_ru": "Размер текста в пикселях."
+    },
+    "font_weight": {
+      "type": "enum",
+      "default": "normal",
+      "allowed_values": [
+        "normal",
+        "bold"
+      ],
+      "meaning_ru": "Насыщенность шрифта."
+    },
+    "text_align": {
+      "type": "enum",
+      "default": "left",
+      "allowed_values": [
+        "left",
+        "center",
+        "right"
+      ],
+      "meaning_ru": "Выравнивание текста внутри компонента."
+    },
+    "padding": {
+      "type": "number",
+      "default": 0,
+      "meaning_ru": "Внутренний отступ до содержимого."
+    },
+    "margin": {
+      "type": "number",
+      "default": 0,
+      "meaning_ru": "Внешний отступ от соседних элементов."
+    },
+    "min_width": {
+      "type": "number",
+      "default": 0,
+      "meaning_ru": "Минимальная ширина компонента."
+    },
+    "min_height": {
+      "type": "number",
+      "default": 0,
+      "meaning_ru": "Минимальная высота компонента."
+    },
+    "max_width": {
+      "type": "number",
+      "default": 0,
+      "meaning_ru": "Максимальная ширина компонента."
+    },
+    "max_height": {
+      "type": "number",
+      "default": 0,
+      "meaning_ru": "Максимальная высота компонента."
+    }
   },
-  "text": {
-   "purpose_ru": "Статический текст; содержимое задаётся свойством text_value."
-  },
-  "divider": {
-   "purpose_ru": "Визуальный разделитель групп элементов, не интерактивен."
-  },
-  "spacer": {
-   "purpose_ru": "Пустое пространство для отступов и выравнивания."
-  },
-  "menu": {
-   "purpose_ru": "Контейнер пунктов меню; дочерние пункты включаются через nrel_ui_contains."
-  },
-  "menu_bar": {
-   "purpose_ru": "Горизонтальная строка меню для пунктов concept_ui_menu_item."
-  },
-  "list": {
-   "purpose_ru": "Упорядоченный набор элементов; элементы включаются через nrel_ui_contains."
-  },
-  "scroll": {
-   "purpose_ru": "Контейнер с прокруткой содержимого."
-  },
-  "window": {
-   "purpose_ru": "Окно или панель верхнего уровня для группы компонентов."
-  },
-  "text_field": {
-   "purpose_ru": "Однострочный ввод текста; значение в text_value."
-  },
-  "text_area": {
-   "purpose_ru": "Многострочный ввод текста; значение в text_value."
-  },
-  "slider": {
-   "purpose_ru": "Выбор числового значения в диапазоне; значение в text_value."
-  },
-  "select": {
-   "purpose_ru": "Выбор одного значения из набора вариантов."
-  },
-  "button": {
-   "purpose_ru": "Кнопка, инициирующая действие; текст в text_value, действие в action_id."
-  },
-  "menu_item": {
-   "purpose_ru": "Пункт меню внутри concept_ui_menu или concept_ui_menu_bar через nrel_ui_contains."
+  "relations": {
+    "nrel_ui_contains": "Вложенность: интерфейс → корневые, компонент → дочерний; задаёт структуру, а не плоский список.",
+    "nrel_ui_has_component": "Принадлежность: интерфейс → все компоненты, включая вложенные; плоский список состава.",
+    "nrel_ui_id": "Строковый идентификатор интерфейса или компонента; значение хранится в sc-link.",
+    "nrel_ui_value": "Значение свойства компонента или текст сообщения диалога; значение хранится в sc-link."
   }
- },
- "properties": {
-  "name": {
-   "type": "string",
-   "default": null,
-   "default_note_ru": "зависит от типа",
-   "meaning_ru": "Имя компонента, отображаемое разработчику в редакторе."
-  },
-  "x": {
-   "type": "number",
-   "default": 24,
-   "meaning_ru": "Координата X левого верхнего угла компонента."
-  },
-  "y": {
-   "type": "number",
-   "default": 24,
-   "meaning_ru": "Координата Y левого верхнего угла компонента."
-  },
-  "width": {
-   "type": "number",
-   "default": null,
-   "default_note_ru": "зависит от типа",
-   "meaning_ru": "Ширина компонента в пикселях."
-  },
-  "height": {
-   "type": "number",
-   "default": null,
-   "default_note_ru": "зависит от типа",
-   "meaning_ru": "Высота компонента в пикселях."
-  },
-  "order": {
-   "type": "number",
-   "default": 1,
-   "meaning_ru": "Порядок слоя: чем больше значение, тем выше компонент."
-  },
-  "visible": {
-   "type": "boolean",
-   "default": true,
-   "meaning_ru": "Видимость компонента в представлении."
-  },
-  "enabled": {
-   "type": "boolean",
-   "default": true,
-   "meaning_ru": "Доступность компонента для взаимодействия; false — компонент неактивен."
-  },
-  "opacity": {
-   "type": "number",
-   "default": 1,
-   "allowed_values": "0…1",
-   "meaning_ru": "Непрозрачность компонента: 0 — полностью прозрачный, 1 — непрозрачный."
-  },
-  "text_value": {
-   "type": "string",
-   "default": "",
-   "meaning_ru": "Текст компонента; у image и sound — идентификатор ресурса."
-  },
-  "tooltip": {
-   "type": "string",
-   "default": "",
-   "meaning_ru": "Подсказка, показываемая при наведении на компонент."
-  },
-  "action_id": {
-   "type": "string",
-   "default": "",
-   "meaning_ru": "Идентификатор действия, инициируемого компонентом; осмысленно прежде всего для кнопок и пунктов меню."
-  },
-  "background_color": {
-   "type": "color",
-   "default": "#f4f4f4",
-   "default_note_ru": "может переопределяться типом компонента",
-   "meaning_ru": "Цвет фона компонента в формате CSS."
-  },
-  "color": {
-   "type": "color",
-   "default": "#1a1a1a",
-   "meaning_ru": "Цвет текста компонента в формате CSS."
-  },
-  "border_color": {
-   "type": "color",
-   "default": "#6f6f6f",
-   "meaning_ru": "Цвет рамки компонента в формате CSS."
-  },
-  "border_width": {
-   "type": "number",
-   "default": 1,
-   "meaning_ru": "Толщина рамки в пикселях."
-  },
-  "border_style": {
-   "type": "enum",
-   "default": "solid",
-   "allowed_values": [
-    "solid",
-    "dashed",
-    "none"
-   ],
-   "meaning_ru": "Стиль рамки компонента."
-  },
-  "corner_radius": {
-   "type": "number",
-   "default": 0,
-   "meaning_ru": "Радиус скругления углов в пикселях."
-  },
-  "font_size": {
-   "type": "number",
-   "default": 13,
-   "meaning_ru": "Размер шрифта текста в пикселях."
-  },
-  "font_weight": {
-   "type": "enum",
-   "default": "normal",
-   "allowed_values": [
-    "normal",
-    "bold"
-   ],
-   "meaning_ru": "Насыщенность шрифта."
-  },
-  "text_align": {
-   "type": "enum",
-   "default": "left",
-   "allowed_values": [
-    "left",
-    "center",
-    "right"
-   ],
-   "meaning_ru": "Выравнивание текста внутри компонента."
-  },
-  "padding": {
-   "type": "number",
-   "default": 0,
-   "meaning_ru": "Внутренний отступ от границ компонента до содержимого."
-  },
-  "margin": {
-   "type": "number",
-   "default": 0,
-   "meaning_ru": "Внешний отступ компонента от соседних элементов."
-  },
-  "min_width": {
-   "type": "number",
-   "default": 0,
-   "meaning_ru": "Минимальная ширина компонента; 0 — без ограничения."
-  },
-  "min_height": {
-   "type": "number",
-   "default": 0,
-   "meaning_ru": "Минимальная высота компонента; 0 — без ограничения."
-  },
-  "max_width": {
-   "type": "number",
-   "default": 0,
-   "meaning_ru": "Максимальная ширина компонента; 0 — без ограничения."
-  },
-  "max_height": {
-   "type": "number",
-   "default": 0,
-   "meaning_ru": "Максимальная высота компонента; 0 — без ограничения."
-  }
- },
- "relations": {
-  "nrel_ui_contains": "Вложенность: интерфейс → корневые, компонент → дочерний; задаёт структуру, а не плоский список.",
-  "nrel_ui_has_component": "Принадлежность: интерфейс → все компоненты, включая вложенные; плоский список состава.",
-  "nrel_ui_id": "Строковый идентификатор интерфейса или компонента; значение хранится в sc-link.",
-  "nrel_ui_value": "Значение свойства компонента или текст сообщения диалога; значение хранится в sc-link."
- }
 }

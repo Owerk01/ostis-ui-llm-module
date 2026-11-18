@@ -21,6 +21,7 @@ from .render import (
     build_prompt,
     load_pack,
     load_template,
+    sanitize_question,
 )
 from .validate import ValidationResult, extract_identifiers, find_unknown, validate_answer
 
@@ -50,6 +51,7 @@ class AnswerResult:
     latency_ms: float = 0.0
     validation_removed: list[str] = field(default_factory=list)
     hallucinated: bool = False
+    unknown_in_final: list[str] = field(default_factory=list)
     knowledge_source: str = "fallback"
     guard: str = ""
 
@@ -137,28 +139,27 @@ class KnowledgeService:
         if not question:
             raise ValueError("Пустой запрос")
 
-        # Идентификаторы вне контракта не передаём модели вообще.
-        unknown = find_unknown(question)
-        if unknown:
-            logger.warning(
-                "Guard: в вопросе идентификаторы вне контракта: %s; LLM не вызывается",
-                ", ".join(unknown),
-            )
-            guard_started = time.perf_counter()
-            built = build_messages(question, self.pack, self.template)
-            result = AnswerResult(
-                text=UNKNOWN_ID_REFUSAL,
-                model=self.settings.llm_model,
-                prompt_version=self.prompt_version,
-                pack_version=self.pack_version,
-                latency_ms=round((time.perf_counter() - guard_started) * 1000, 1),
-                knowledge_source=self.knowledge_source,
-                guard="unknown_identifier",
-            )
-            self._write_log(question, result, built)
-            return result
+        # Неизвестные идентификаторы в вопросе заменяются, но вопрос доходит до LLM.
+        # Детерминированный отказ — только если после санитизации не осталось смысла.
+        prompt_question = sanitize_question(question)
+        guard = "sanitized" if prompt_question != question else ""
+        if guard:
+            remainder = prompt_question.replace("«неизвестный идентификатор»", "")
+            remainder = remainder.strip(" \t\n,.;:!?-—")
+            if len(remainder) < 3:
+                built = build_messages(question, self.pack, self.template)
+                result = AnswerResult(
+                    text=UNKNOWN_ID_REFUSAL,
+                    model=self.settings.llm_model,
+                    prompt_version=self.prompt_version,
+                    pack_version=self.pack_version,
+                    knowledge_source=self.knowledge_source,
+                    guard="unknown_identifier",
+                )
+                self._write_log(question, result, built)
+                return result
 
-        built = build_messages(question, self.pack, self.template)
+        built = build_messages(prompt_question, self.pack, self.template)
         started = time.perf_counter()
         deadline = started + self.settings.llm_timeout_s
         chunks: list[str] = []
@@ -189,7 +190,9 @@ class KnowledgeService:
             latency_ms=round(latency_ms, 1),
             validation_removed=validation.removed,
             hallucinated=validation.hallucinated,
+            unknown_in_final=find_unknown(validation.text),
             knowledge_source=self.knowledge_source,
+            guard=guard,
         )
         self._write_log(question, result, built)
         return result

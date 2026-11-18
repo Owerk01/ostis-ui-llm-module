@@ -87,3 +87,10 @@ def test_no_repair_removes_unknown() -> None:
 
 def test_extract_ignores_plain_russian_words() -> None:
     assert extract_identifiers("Кнопка и пункт меню — это компоненты.") == []
+
+
+def test_environment_identifier_allowed() -> None:
+    """Идентификаторы HTML-трансляции упоминаются, но не считаются галлюцинацией."""
+    text = "Трансляцию выполняет `action_translate_sc_to_html`, а шаблон задаёт `nrel_html_template`."
+    assert find_unknown(text) == []
+    assert validate_answer(text).unknown_after == []

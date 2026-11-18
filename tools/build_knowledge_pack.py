@@ -121,7 +121,12 @@ def load_domain_knowledge() -> tuple[dict[str, list[dict[str, str]]], dict[str, 
         if class_filter is not None:
             items = [item for item in items if item["class"] == class_filter]
         elif filename == "ui_methodology.scs":
-            # Процессы методики (<- concept_ui_knowledge) идут перед этапами.
+            # Заметка о трёх процессах — отдельная запись, не этап.
+            # Этапы получают детерминированный признак процесса из idtf.
+            for item in items:
+                prefix = item["idtf"].replace("ui_stage_", "").split("_", 1)[0]
+                if prefix in {"initial", "editing", "adaptation"}:
+                    item["process"] = prefix
             order = {"concept_ui_knowledge": 0, "concept_ui_development_stage": 1}
             items.sort(key=lambda item: order.get(item["class"], 2))
         for item in items:
@@ -329,6 +334,15 @@ def update_provenance(pack: dict[str, Any], degraded: bool) -> None:
         "methodology_stages": ("ui_methodology.scs", "Проект инструментальной среды, раздел 4"),
         "environment_notes": ("ui_environment.scs", "Проект инструментальной среды, раздел 7"),
     }
+    provenance["knowledge_blocks"]["environment_html"] = {
+        "repo": "https://github.com/Glentas/ostis-ui",
+        "commit": git_commit(ROOT / "external" / "ostis-ui"),
+        "file": "translators/HTMLTranslatorModule/keynodes/HTMLTranslatorKeynodes.hpp",
+        "extracted_at": extracted_at,
+        "degraded": False,
+        "count": 1,
+    }
+
     for block, (filename, source) in domain_sources.items():
         provenance["knowledge_blocks"][block] = {
             "repo": "local:ostis-ui-assistant",

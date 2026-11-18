@@ -82,7 +82,9 @@ def main() -> int:
             timeout=60_000,
         )
         body = page.locator("body").inner_text().lower()
-        assert "нет сведений" in body or "отсутств" in body, body[-500:]
+        assert (
+            "нет сведений" in body or "нет компонента" in body or "отсутств" in body
+        ), body[-500:]
         print("negative: отказ вместо выдумки получен")
 
         # --- Отмена -----------------------------------------------------------
