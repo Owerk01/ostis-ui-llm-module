@@ -246,5 +246,13 @@ typecheck и `make test` зелёные.
 - после: `1` (первое восстановление счётчика) + `11` (пакетная история) = **12**;
 - сокращение ~30× (порог — минимум 3×).
 
+## FIX-P2-1. Библиотека не требует window
+
+Изменено: таймеры в `scMemory.ts` используют `globalThis.*`; добавлен статический
+тест `libraryEnvironment.test.ts` и цель `npm test` обновлена.
+
+До: `not ok 1 - library code does not require window timers`. После: 8 node-тестов
+и typecheck зелёные. `window.localStorage` остался только в dev-стенде.
+
 Тесты: `test_message_index_uses_in_memory_counter` и `test_read_history_batches_queries`.
 До: первый тест падал (3 поиска вместо одного). После: оба зелёные.

@@ -299,8 +299,8 @@ export class ScMemoryTransport implements AssistantTransport {
       const finish = (result: boolean) => {
         if (settled) return
         settled = true
-        window.clearInterval(timer)
-        window.clearTimeout(timeout)
+        globalThis.clearInterval(timer)
+        globalThis.clearTimeout(timeout)
         active.wake = undefined
         void subscription.then((sub) =>
           this.client.destroyElementaryEventSubscriptions(sub.id).catch(() => undefined),
@@ -329,8 +329,8 @@ export class ScMemoryTransport implements AssistantTransport {
         )
         .then((items) => items[0])
 
-      const timer = window.setInterval(() => void check(), POLL_INTERVAL_MS)
-      const timeout = window.setTimeout(() => finish(false), ACTION_TIMEOUT_MS)
+      const timer = globalThis.setInterval(() => void check(), POLL_INTERVAL_MS)
+      const timeout = globalThis.setTimeout(() => finish(false), ACTION_TIMEOUT_MS)
       active.wake = () => finish(false)
       void check()
     })
