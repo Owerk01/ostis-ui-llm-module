@@ -49,7 +49,7 @@ export function AssistantPanel({
   const [initError, setInitError] = useState<string | null>(null)
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
-  const [now, setNow] = useState(() => Date.now())
+  const [now, setNow] = useState(() => performance.now())
 
   const activeRequest = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -93,10 +93,10 @@ export function AssistantPanel({
   }, [transport, dialogIdProp, refreshHealth])
 
   useEffect(() => {
-    if (startedAt === null) return
-    const timer = window.setInterval(() => setNow(Date.now()), 100)
-    return () => window.clearInterval(timer)
-  }, [startedAt])
+    if (pendingId === null) return
+    const timer = globalThis.setInterval(() => setNow(performance.now()), 100)
+    return () => globalThis.clearInterval(timer)
+  }, [pendingId])
 
   const run = useCallback(
     async (question: string, appendUser: boolean) => {
@@ -129,9 +129,10 @@ export function AssistantPanel({
         return [...next, pendingMessage]
       })
       activeRequest.current = pendingLocalId
+      const started = performance.now()
       setPendingId(pendingLocalId)
-      setStartedAt(performance.now())
-      setNow(Date.now())
+      setStartedAt(started)
+      setNow(started)
 
       try {
         const answer = await transport.ask(
@@ -221,7 +222,7 @@ export function AssistantPanel({
     : messages.some((message) => message.state === 'error')
       ? 'error'
       : 'idle'
-  const elapsedMs = startedAt === null ? 0 : now - startedAt
+  const elapsedMs = startedAt === null ? 0 : Math.max(0, now - startedAt)
   const fallback = health?.kb.knowledgeSource === 'fallback'
 
   const statusProps = useMemo(

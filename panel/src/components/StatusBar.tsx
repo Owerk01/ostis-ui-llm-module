@@ -1,4 +1,5 @@
 import type { AssistantHealth } from '../transport/types'
+import { formatElapsed } from '../utils/formatElapsed'
 import styles from './StatusBar.module.css'
 
 export type RequestState = 'idle' | 'pending' | 'error'
@@ -9,12 +10,6 @@ interface StatusBarProps {
   state: RequestState
   elapsedMs: number
   onCancel?: () => void
-}
-
-function formatElapsed(ms: number): string {
-  const seconds = Math.floor(ms / 1000)
-  const tenths = Math.floor((ms % 1000) / 100)
-  return `${seconds},${tenths} с`
 }
 
 export function StatusBar({

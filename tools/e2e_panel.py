@@ -9,12 +9,13 @@
 from __future__ import annotations
 
 import os
+import re
 import sys
 from pathlib import Path
 
 from playwright.sync_api import sync_playwright
 
-PANEL_URL = "http://localhost:5173/"
+PANEL_URL = "http://127.0.0.1:5173/"
 CHROME = "/usr/bin/google-chrome-stable"
 MODE = os.environ.get("E2E_MODE", "direct-http")
 SCREENSHOT = Path(
@@ -89,6 +90,10 @@ def main() -> int:
         page.get_by_role("button", name="Отправить").click()
         cancel_button = page.get_by_role("button", name="Отмена")
         cancel_button.wait_for(state="visible", timeout=2_000)
+        page.wait_for_timeout(1_000)
+        timer = page.locator('[aria-label="Время обработки запроса"]').inner_text()
+        assert re.fullmatch(r"[01],\d с", timer), f"таймер показывает {timer!r}"
+        print(f"timer: {timer}")
         cancel_button.click()
         page.get_by_text("Отменено").first.wait_for(timeout=5_000)
         print("cancel: сообщение помечено «Отменено»")

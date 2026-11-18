@@ -134,9 +134,9 @@ test: venv
 	@$(PY) tools/check_id_collisions.py
 	@$(VENV)/bin/pytest -q service/tests
 	@if [ -d panel/node_modules ]; then \
-		cd panel && npm run typecheck; \
+		cd panel && npm run typecheck && npm test; \
 	else \
-		echo "WARN: panel/node_modules отсутствует, typecheck панели пропущен (make panel)" >&2; \
+		echo "WARN: panel/node_modules отсутствует, проверки панели пропущены (make panel)" >&2; \
 	fi
 
 eval: venv
