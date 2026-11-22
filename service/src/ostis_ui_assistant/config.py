@@ -28,8 +28,18 @@ class Settings(BaseSettings):
     llm_top_p: float = 0.9
     llm_think: bool = False
     llm_keep_alive: str = "30m"
-    llm_timeout_s: float = 120.0
+    # Интерактивный таймаут меньше 30 с, которые ждёт редактор (previewHtml.ts).
+    llm_timeout_s: float = 25.0
+    # Отдельный таймаут для eval: батч может позволить себе ждать дольше.
+    llm_timeout_s_batch: float = 120.0
     llm_max_output_tokens: int = 512
+
+    # --- Обработка запросов диалога (B0-1) ---
+    dialog_worker_threads: int = 1
+    dialog_queue_size: int = 16
+    service_heartbeat_interval_s: float = 5.0
+    service_lease_ttl_s: float = 20.0
+    watchdog_max_age_minutes: int = 30
 
     # --- OSTIS ---
     sc_ws_url: str = "ws://127.0.0.1:8090/ws_json"

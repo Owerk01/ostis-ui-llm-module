@@ -16,6 +16,10 @@ concept_ui_knowledge => nrel_inclusion: concept_ui_development_principle;;
 concept_ui_knowledge => nrel_inclusion: concept_ui_development_stage;;
 concept_ui_knowledge => nrel_inclusion: concept_ui_environment_note;;
 
+// Единственный узел состояния сервиса диалога: используется как advisory-аренда
+// экземпляра и как источник heartbeat/health для панели (B0-2/B0-5).
+concept_ui_dialog_service <- sc_node_class;;
+
 action_answer_ui_development_question <- sc_node_class;;
 
 nrel_ui_dialog_message <- sc_node_norole_relation;;
@@ -27,6 +31,9 @@ nrel_ui_prompt_version <- sc_node_norole_relation;;
 nrel_ui_knowledge_text <- sc_node_norole_relation;;
 nrel_ui_knowledge_source <- sc_node_norole_relation;;
 nrel_ui_dialog_context <- sc_node_norole_relation;;
+nrel_ui_service_heartbeat <- sc_node_norole_relation;;
+nrel_ui_service_state <- sc_node_norole_relation;;
+nrel_ui_message_code <- sc_node_norole_relation;;
 
 concept_ui_dialog
 => nrel_main_idtf: [Диалог разработчика со средой] (* <- lang_ru;; *);;

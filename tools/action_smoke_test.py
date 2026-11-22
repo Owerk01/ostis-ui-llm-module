@@ -31,7 +31,7 @@ from sc_kpm.utils.action_utils import get_action_result
 
 SC_WS_URL = os.environ.get("SC_WS_URL", "ws://127.0.0.1:8090/ws_json")
 ACTION_CLASS = "action_answer_ui_development_question"
-TIMEOUT_S = float(os.environ.get("ACTION_TIMEOUT_S", "180"))
+TIMEOUT_S = float(os.environ.get("ACTION_TIMEOUT_S", "30"))
 
 
 def _init() -> None:

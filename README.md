@@ -4,7 +4,8 @@
 среды OSTIS. Локальная LLM + связь с базой знаний через sc-память.
 
 Документация: [контракты](docs/01_CONTRACTS.md),
-[знания](docs/02_KNOWLEDGE.md), [оценка качества](docs/03_EVAL.md).
+[знания](docs/02_KNOWLEDGE.md), [оценка качества](docs/03_EVAL.md),
+[интеграция](docs/04_INTEGRATION.md).
 
 > Реализовано:
 > - боевой режим `sc-memory`: панель → действие в БЗ → sc-агент → LLM →
@@ -14,6 +15,10 @@
 >   методика и устройство среды;
 > - пост-валидация идентификаторов, guard неизвестных id и чипы оснований;
 > - отмена, таймауты, ошибки LLM, повтор запроса;
+> - обработка вопроса вне потока событий: ограниченная очередь, pending-сообщение,
+>   watchdog висячих действий;
+> - один экземпляр агента на БЗ (advisory-аренда с heartbeat), порядок сообщений
+>   из БЗ;
 > - оценка по dev/holdout: автопроверки 93.5% / 86.2%, фактическая точность
 >   по ручной разметке 94.7%, известные ошибки перечислены в `docs/03_EVAL.md`;
 > - панель как изолированная библиотека (`npm run build:lib`) для встраивания в редактор.
@@ -23,23 +28,7 @@
 Требования: **Linux x86_64**, Python 3.12, Node 20+, `git`, `curl`, `zstd`,
 Ollama. Docker не нужен.
 
-### 1. Источники истины (только для чтения)
-
-```bash
-mkdir -p external && cd external
-git clone https://github.com/vodo4kin/ostis-ui-editor
-git -C ostis-ui-editor checkout f6eb4fa
-git clone -b feature/SCS_to_HTML https://github.com/Glentas/ostis-ui
-git -C ostis-ui checkout a673766
-git clone https://github.com/Oddchew/UI-adaptation
-git -C UI-adaptation checkout 5c3d627
-git clone -b 0.10.0 https://github.com/ostis-apps/ostis-example-app
-cd ..
-```
-
-Коммиты зафиксированы в `knowledge/provenance.json`. `external/` в `.gitignore`.
-
-### 2. Один командой
+### 1. Один командой
 
 ```bash
 cp .env.example .env
@@ -53,7 +42,7 @@ sc-агента и панель. Повторный запуск ничего н
 Открыть **http://127.0.0.1:5173/**, транспорт `sc-memory` выбран по умолчанию.
 Вопрос для проверки: «Чем `concept_ui_button` отличается от `concept_ui_menu_item`?».
 
-### 3. Пошагово (для отладки)
+### 2. Пошагово (для отладки)
 
 ```bash
 make venv          # .venv и зависимости
@@ -69,7 +58,7 @@ make panel         # Vite в текущем терминале
 Отладочный режим вместо агента — `make service` (FastAPI на 127.0.0.1:8770)
 и переключатель `direct-http` в dev-стенде.
 
-### 4. Проверки и остановка
+### 3. Проверки и остановка
 
 ```bash
 make test         # pytest + проверка коллизий идентификаторов + typecheck панели
@@ -156,13 +145,3 @@ panel/               панель чата React + dev-стенд
 docs/                контракты, знания, методика оценки, скриншоты
 eval/                gold-набор и отчёты прогонов
 ```
-
-## Важно
-
-- `external/` не редактируется; схема UI не копируется и не переопределяется.
-- Ассистент **не изменяет** модель интерфейса и не вызывает
-  `action_translate_sc_to_html`.
-- В режиме `sc-memory` знания читаются из БЗ (`kb`) и только при её
-  недоступности берутся из `knowledge/pack.json` (`fallback`, с явной пометкой
-  в панели и `/health`).
-- Для запуска не требуется Docker.

@@ -7,27 +7,41 @@ from unittest.mock import MagicMock
 from ostis_ui_assistant.sc import dialog_store
 
 
-def test_message_index_uses_in_memory_counter(monkeypatch) -> None:
+def test_message_index_reads_max_from_kb(monkeypatch) -> None:
+    """B0-2: следующий номер = max(rrel_N) + 1 из БЗ, а не счётчик процесса."""
     calls = 0
+
+    class FakeAddr:
+        def __init__(self, value: int) -> None:
+            self.value = value
+
+    class FakeRow:
+        def __init__(self, message: int, rrel: int) -> None:
+            self.message = FakeAddr(message)
+            self.rrel = FakeAddr(rrel)
+
+        def get(self, alias: str):
+            return self.message if alias == "_message" else self.rrel
 
     def fake_search(*args, **kwargs):
         nonlocal calls
         calls += 1
-        return []
+        return [FakeRow(1, 5), FakeRow(2, 12)]
 
     monkeypatch.setattr(dialog_store, "search_by_template", fake_search)
     monkeypatch.setattr(
-        dialog_store, "ScKeynodes", {"nrel_ui_dialog_message": MagicMock()}
+        dialog_store,
+        "get_element_system_identifier",
+        lambda addr: f"rrel_{addr.value}",
     )
-    dialog_store.reset_counters()
     dialog = MagicMock()
     dialog.value = 12345
     dialog.is_valid.return_value = True
 
-    assert dialog_store._message_index(dialog) == 1
-    assert dialog_store._message_index(dialog) == 2
-    assert dialog_store._message_index(dialog) == 3
-    assert calls == 1  # поиск только при первом обращении к диалогу
+    assert dialog_store._message_index(dialog) == 13
+    # Повторный вызов не инкрементит процессный счётчик: оба раза данные из БЗ.
+    assert dialog_store._message_index(dialog) == 13
+    assert calls == 2
 
 
 def test_read_history_batches_queries(monkeypatch) -> None:
@@ -70,6 +84,7 @@ def test_read_history_batches_queries(monkeypatch) -> None:
         "nrel_ui_dialog_message", "nrel_ui_value", "nrel_ui_message_state",
         "nrel_ui_message_time", "nrel_ui_llm_model", "nrel_ui_prompt_version",
         "nrel_ui_knowledge_source", "nrel_ui_answer_source",
+        "nrel_ui_message_code",
         "concept_ui_user_message", "concept_ui_assistant_message",
     )})
 

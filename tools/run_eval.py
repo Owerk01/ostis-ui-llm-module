@@ -189,7 +189,11 @@ def make_settings(args: argparse.Namespace) -> Settings:
         llm_model=args.model,
         llm_num_ctx=args.num_ctx,
         llm_temperature=args.temperature,
-        llm_timeout_s=args.timeout,
+        llm_timeout_s=(
+            args.timeout
+            if args.timeout is not None
+            else defaults.llm_timeout_s_batch
+        ),
         llm_keep_alive="0" if args.cold else "30m",
         knowledge_source="fallback" if args.source == "pack" else "kb",
         prompt_path=prompt_path,
@@ -361,7 +365,10 @@ def write_report(
         f"{summary['prompt_tokens_mean']:.0f}, предупреждений о контексте "
         f"{summary['token_warning_count']}"
     )
-    lines.append(f"- Температура: {args.temperature}; timeout {args.timeout} с")
+    lines.append(
+        f"- Температура: {args.temperature}; "
+        f"timeout {service.settings.llm_timeout_s:g} с"
+    )
     lines.append(f"- Вопросов: {summary['total']}; длительность прогона: {duration_s:.1f} с")
     lines.append(f"- Прогрев перед прогоном: {warmup_ms:.0f} мс (в метрики не входит)")
     lines.append(f"- Кэш: {'холодный (keep_alive=0)' if args.cold else 'тёплый'}")
@@ -492,7 +499,12 @@ def main() -> int:
     parser.add_argument("--model", default=os.environ.get("LLM_MODEL", "qwen3.5:4b"))
     parser.add_argument("--num-ctx", type=int, default=int(os.environ.get("LLM_NUM_CTX", "8192")))
     parser.add_argument("--temperature", type=float, default=0.2)
-    parser.add_argument("--timeout", type=float, default=120.0)
+    parser.add_argument(
+        "--timeout",
+        type=float,
+        default=None,
+        help="Таймаут одного ответа; по умолчанию LLM_TIMEOUT_S_BATCH",
+    )
     parser.add_argument("--prompt", default="", help="путь к prompt_vN.md")
     parser.add_argument("--prompt-version", default="")
     parser.add_argument("--source", choices=["kb", "pack"], default="kb")

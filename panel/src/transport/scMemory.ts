@@ -36,7 +36,8 @@ export const DEFAULT_SC_URL = 'ws://127.0.0.1:8090/ws_json'
 
 const ACTION_CLASS = 'action_answer_ui_development_question'
 const STATUS_ERROR = 'error'
-const ACTION_TIMEOUT_MS = 180_000
+// Интерактивный таймаут согласован с редактором (30 с) и LLM_TIMEOUT_S=25.
+const ACTION_TIMEOUT_MS = 30_000
 const POLL_INTERVAL_MS = 400
 
 const MESSAGE_STATES: ReadonlySet<string> = new Set([

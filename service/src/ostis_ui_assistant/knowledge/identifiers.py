@@ -72,6 +72,8 @@ NEW_CLASSES = {
     "concept_ui_development_principle",
     "concept_ui_development_stage",
     "concept_ui_environment_note",
+    # B0-2/B0-5: единственный узел состояния сервиса диалога (аренда экземпляра).
+    "concept_ui_dialog_service",
 }
 
 NEW_RELATIONS = {
@@ -84,6 +86,10 @@ NEW_RELATIONS = {
     "nrel_ui_knowledge_text",
     "nrel_ui_knowledge_source",
     "nrel_ui_dialog_context",
+    # B0-1/B0-2/B1-2: состояние сервиса, heartbeat и машиночитаемый код исхода.
+    "nrel_ui_service_heartbeat",
+    "nrel_ui_service_state",
+    "nrel_ui_message_code",
 }
 
 NEW_ACTIONS = {

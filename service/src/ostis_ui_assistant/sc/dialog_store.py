@@ -7,9 +7,14 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any
 
-from sc_client.client import search_by_template
+from sc_client.client import search_by_template, set_link_contents
 from sc_client.constants import sc_type
-from sc_client.models import ScAddr, ScTemplate
+from sc_client.models import (
+    ScAddr,
+    ScLinkContent,
+    ScLinkContentType,
+    ScTemplate,
+)
 from sc_kpm import ScKeynodes
 from sc_kpm.utils import (
     generate_binary_relation,
@@ -19,6 +24,7 @@ from sc_kpm.utils import (
     get_element_system_identifier,
     get_link_content_data,
 )
+from sc_kpm.utils.action_utils import get_action_result
 
 from ..knowledge.identifiers import NEW_CLASSES
 from . import keynodes as kn
@@ -58,30 +64,14 @@ def ensure_dialog(dialog: ScAddr | None) -> ScAddr:
     return create_dialog()
 
 
-# Счётчик порядковых номеров живёт в памяти процесса: полный поиск по БЗ
-# делается только при первом обращении к диалогу.
-_message_counters: dict[int, int] = {}
-
-
-def reset_counters() -> None:
-    """Сброс счётчиков (используется тестами и при смене БЗ)."""
-    _message_counters.clear()
-
-
 def _message_index(dialog: ScAddr) -> int:
-    key = dialog.value
-    if key not in _message_counters:
-        templ = ScTemplate()
-        templ.quintuple(
-            dialog,
-            sc_type.VAR_COMMON_ARC,
-            sc_type.VAR_NODE >> "_message",
-            sc_type.VAR_PERM_POS_ARC,
-            ScKeynodes["nrel_ui_dialog_message"],
-        )
-        _message_counters[key] = len(search_by_template(templ))
-    _message_counters[key] += 1
-    return _message_counters[key]
+    """Следующий порядковый номер: `max(rrel_N) + 1` из БЗ (B0-2).
+
+    Счётчик в памяти процесса здесь намеренно не используется: два экземпляра
+    агента дали бы одинаковые `rrel_N` и перемешали историю. Аренда экземпляра
+    (см. `sc/service_state.py`) делает такой запрос безопасным.
+    """
+    return max(_bulk_ordinals(dialog).values(), default=0) + 1
 
 
 def _append_message(
@@ -94,6 +84,7 @@ def _append_message(
     prompt_version: str | None = None,
     sources: list[ScAddr] | None = None,
     knowledge_source: str | None = None,
+    code: str | None = None,
 ) -> ScAddr:
     message = generate_node(sc_type.CONST_NODE)
     generate_connector(sc_type.CONST_PERM_POS_ARC, ScKeynodes[role_class], message)
@@ -133,6 +124,14 @@ def _append_message(
             message,
             source_link,
             ScKeynodes["nrel_ui_knowledge_source"],
+        )
+    if code:
+        code_link = generate_link(code)
+        generate_binary_relation(
+            sc_type.CONST_COMMON_ARC,
+            message,
+            code_link,
+            ScKeynodes["nrel_ui_message_code"],
         )
     for source in sources or []:
         if source.is_valid():
@@ -175,14 +174,121 @@ def append_assistant_message(
     )
 
 
-def append_error_message(dialog: ScAddr, reason: str) -> ScAddr:
+def append_error_message(
+    dialog: ScAddr, reason: str, *, code: str | None = None
+) -> ScAddr:
     return _append_message(
         dialog,
         reason,
         "concept_ui_assistant_message",
         kn.STATUS_ERROR,
         knowledge_source="unknown",
+        code=code,
     )
+
+
+def _set_link_value(message: ScAddr, relation: str, value: str) -> None:
+    """Обновляет значение существующего sc-link или создаёт его один раз."""
+    link = _find_link(message, relation)
+    if link is None:
+        link = generate_link(value)
+        generate_binary_relation(
+            sc_type.CONST_COMMON_ARC, message, link, ScKeynodes[relation]
+        )
+        return
+    set_link_contents(ScLinkContent(value, ScLinkContentType.STRING, link))
+
+
+def _add_sources(message: ScAddr, sources: list[ScAddr]) -> None:
+    if not sources:
+        return
+    templ = ScTemplate()
+    templ.quintuple(
+        message,
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE >> "_source",
+        sc_type.VAR_PERM_POS_ARC,
+        ScKeynodes["nrel_ui_answer_source"],
+    )
+    existing = {row.get("_source").value for row in search_by_template(templ)}
+    for source in sources:
+        if source.is_valid() and source.value not in existing:
+            generate_binary_relation(
+                sc_type.CONST_COMMON_ARC,
+                message,
+                source,
+                ScKeynodes["nrel_ui_answer_source"],
+            )
+            existing.add(source.value)
+
+
+def complete_assistant_message(
+    message: ScAddr,
+    text: str,
+    *,
+    model: str | None = None,
+    prompt_version: str | None = None,
+    sources: list[ScAddr] | None = None,
+    state: str = kn.STATUS_DONE,
+    knowledge_source: str | None = None,
+    code: str | None = None,
+) -> None:
+    """Дописывает pending-сообщение после генерации, не создавая второе сообщение."""
+    _set_link_value(message, "nrel_ui_value", text)
+    _set_link_value(message, "nrel_ui_message_state", state)
+    if model:
+        _set_link_value(message, "nrel_ui_llm_model", model)
+    if prompt_version:
+        _set_link_value(message, "nrel_ui_prompt_version", prompt_version)
+    if knowledge_source:
+        _set_link_value(message, "nrel_ui_knowledge_source", knowledge_source)
+    if code:
+        _set_link_value(message, "nrel_ui_message_code", code)
+    _add_sources(message, sources or [])
+
+
+def find_link(message: ScAddr, relation: str) -> ScAddr | None:
+    return _find_link(message, relation)
+
+
+def message_time(message: ScAddr) -> str | None:
+    return _link_value(message, "nrel_ui_message_time")
+
+
+def find_assistant_message_in_result(result: ScAddr) -> ScAddr | None:
+    """Находит assistant-сообщение внутри структуры результата действия."""
+    if not result.is_valid():
+        return None
+    templ = ScTemplate()
+    templ.triple(result, sc_type.VAR_PERM_POS_ARC, sc_type.VAR_NODE >> "_element")
+    for row in search_by_template(templ):
+        element = row.get("_element")
+        if element.is_valid() and _is_class(element, "concept_ui_assistant_message"):
+            return element
+    return None
+
+
+def find_assistant_message(action: ScAddr) -> ScAddr | None:
+    """Assistant-сообщение, уже связанное с действием через `nrel_result`."""
+    return find_assistant_message_in_result(get_action_result(action))
+
+
+def is_action_initiated(action: ScAddr) -> bool:
+    templ = ScTemplate()
+    templ.triple(ScKeynodes["action_initiated"], sc_type.VAR_PERM_POS_ARC, action)
+    return bool(search_by_template(templ))
+
+
+def is_action_finished(action: ScAddr) -> bool:
+    templ = ScTemplate()
+    templ.triple(ScKeynodes["action_finished"], sc_type.VAR_PERM_POS_ARC, action)
+    return bool(search_by_template(templ))
+
+
+def _is_class(element: ScAddr, class_idtf: str) -> bool:
+    templ = ScTemplate()
+    templ.triple(ScKeynodes[class_idtf], sc_type.VAR_PERM_POS_ARC, element)
+    return bool(search_by_template(templ))
 
 
 def read_state(message: ScAddr) -> str | None:
@@ -198,7 +304,7 @@ def read_state(message: ScAddr) -> str | None:
     return str(get_link_content_data(rows[0].get("_link"))) if rows else None
 
 
-def _link_value(message: ScAddr, relation: str) -> str | None:
+def _find_link(message: ScAddr, relation: str) -> ScAddr | None:
     templ = ScTemplate()
     templ.quintuple(
         message,
@@ -210,7 +316,14 @@ def _link_value(message: ScAddr, relation: str) -> str | None:
     rows = search_by_template(templ)
     if not rows:
         return None
-    return str(get_link_content_data(rows[0].get("_link")))
+    return rows[0].get("_link")
+
+
+def _link_value(message: ScAddr, relation: str) -> str | None:
+    link = _find_link(message, relation)
+    if link is None:
+        return None
+    return str(get_link_content_data(link))
 
 
 def _role(message: ScAddr) -> str:
@@ -344,6 +457,7 @@ def read_history(dialog: ScAddr) -> list[dict[str, Any]]:
     models = _bulk_link_values(dialog, "nrel_ui_llm_model")
     versions = _bulk_link_values(dialog, "nrel_ui_prompt_version")
     sources_map = _bulk_link_values(dialog, "nrel_ui_knowledge_source")
+    codes = _bulk_link_values(dialog, "nrel_ui_message_code")
     roles = _bulk_roles()
     ordinals = _bulk_ordinals(dialog)
     sources = _bulk_sources(dialog)
@@ -363,6 +477,7 @@ def read_history(dialog: ScAddr) -> list[dict[str, Any]]:
                     "model": models.get(key),
                     "promptVersion": versions.get(key),
                     "knowledgeSource": sources_map.get(key),
+                    "code": codes.get(key),
                     "sources": sources.get(key, []),
                 },
             )

@@ -11,6 +11,6 @@ test('formatElapsed: zero and ordinary values', () => {
 
 test('formatElapsed: clamps negative and values above transport timeout', () => {
   assert.equal(formatElapsed(-1000), '0,0 с')
-  assert.equal(formatElapsed(180_000), '180,0 с')
-  assert.equal(formatElapsed(10_000_000), '180,0 с')
+  assert.equal(formatElapsed(30_000), '30,0 с')
+  assert.equal(formatElapsed(10_000_000), '30,0 с')
 })

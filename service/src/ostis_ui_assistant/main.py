@@ -15,24 +15,54 @@ def run_sc_memory(settings: Settings) -> None:
     from sc_kpm import ScServer
 
     from .agents.module import UiDialogModule
+    from .agents.watchdog import close_orphan_actions
+    from .agents.worker import DialogWorker
     from .knowledge.service import KnowledgeService
     from .sc.keynodes import init_keynodes
+    from .sc.service_state import ServiceState
 
+    logger = logging.getLogger(__name__)
     server = ScServer(settings.sc_ws_url)
     with server.connect():
         init_keynodes()
-        service = KnowledgeService(settings)
-        module = UiDialogModule(service)
-        server.add_modules(module)
+        state = ServiceState(settings)
+        if not state.acquire():
+            # Второй экземпляр не должен регистрировать обработчик вообще.
+            raise SystemExit(1)
+
+        state.start_heartbeat()
+        service = None
+        worker = None
         try:
+            service = KnowledgeService(settings)
+            worker = DialogWorker(service, settings, state)
+            closed = close_orphan_actions(settings)
+            if closed:
+                logger.warning("Watchdog закрыл висячих действий: %s", closed)
+
+            worker.start()
+            module = UiDialogModule(service, worker)
+            server.add_modules(module)
+            state.mark_ready(
+                pack_version=service.pack_version,
+                knowledge_source=service.knowledge_source,
+                kb_partial=service.kb_status.partial,
+                kb_missing=service.kb_status.missing,
+            )
             with server.register_modules():
-                logging.getLogger(__name__).info(
+                logger.info(
                     "sc-агент %s зарегистрирован, ожидание действий",
                     "action_answer_ui_development_question",
                 )
                 server.serve()
         finally:
-            service.close()
+            state.set_state("stopping")
+            if worker is not None:
+                worker.stop(timeout=5.0)
+            if service is not None:
+                service.close()
+            state.stop_heartbeat()
+            state.release()
 
 
 def main() -> None:
