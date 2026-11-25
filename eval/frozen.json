@@ -1,8 +1,8 @@
 {
   "prompt_version": "v4",
-  "prompt_v4.md": "8dd67d8a4e5eae10ab07c3e7bfa9c1f353f5e12c6d8d614557854b815f907e35",
+  "prompt_v4.md": "0ea5fb6405cea4196ecb927486e8fa1e1b517bb685c5f9378d773fa8c0ad6708",
   "gold_questions.jsonl": "aed4a0e6f35dadbcf9e68d668df53d1d3abc93beee9108412045be5d0a78bd60",
   "holdout_questions.jsonl": "c176d25851a7be309bacda08447d1cd8dc5b5dfbdd002fe59099b4164068aa72",
   "frozen_at": "2026-11-18T18:45:00Z",
-  "note": "Промпт донастроен по dev-ошибкам до финальных прогонов; holdout не менялся."
+  "note": "Промпт обновлён в T1 (ограничение action_id, связи input/output); gold/holdout не менялись, перепрогон и новая заморозка — в T12."
 }

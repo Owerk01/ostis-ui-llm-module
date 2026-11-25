@@ -277,14 +277,35 @@ Heartbeat обновляется фоновым потоком раз в 5 с. �
   В журнале `guard = "sanitized"`, исходный текст в БЗ и JSONL не меняется.
   Детерминированный отказ (`guard = "unknown_identifier"`) — только если после
   санитизации не осталось содержательной части.
-- `ENVIRONMENT_IDENTIFIERS` (`action_translate_sc_to_html`, `nrel_html_template`,
-  `nrel_html_parameter_id`, `nrel_html_representation`, `nrel_sc_template`,
-  `concept_current_ostis_ui_model`, `rrel_specific_realisation`) — идентификаторы
+- `ENVIRONMENT_IDENTIFIERS` (`action_translate_sc_to_html`,
+  `nrel_html_representation`, `concept_current_ostis_ui_model`) — идентификаторы
   среды, которые мы только упоминаем и не объявляем в своих `.scs`. Источник —
   `external/ostis-ui`, `HTMLTranslatorKeynodes.hpp` (см. provenance). Валидатор
   считает их допустимыми.
 - `/health` (direct-http) дополнительно отдаёт `prompt_version`,
   `knowledge_estimated_tokens`, `kb.partial`, `kb.missing`, `sc_connected`.
+
+### Контракт знаний
+
+- **16 типов, 27 свойств.** `action_id` доступен только типам-источникам
+  действий: `concept_ui_button`, `concept_ui_select`, `concept_ui_menu_item`.
+  У остальных 13 типов 26 общих свойств; правило задаётся `allowed_props` в
+  `catalog.ts` и повторяется в `knowledge/pack.json`.
+- **6 отношений.** `nrel_ui_contains` — вложенность без ограничений по типам;
+  `nrel_ui_input_target` — «триггер → откуда читать» (источники `button`,
+  `select`, `menu_item`; цели `text_field`, `text_area`, `select`, `slider`);
+  `nrel_ui_output_target` — «триггер → куда писать результат» (источники те же,
+  13 целей из `OUTPUT_TARGET_TYPES`); также `nrel_ui_has_component`,
+  `nrel_ui_id`, `nrel_ui_value`.
+- **Источник истины — код редактора**, а не `docs/catalog.md`: `catalog.ts`,
+  `linkRules.ts`, `names.ts`, `types.ts`, `i18n/ru.ts`. `make drift` входит в
+  `make test` и падает при расхождении типов/свойств/отношений,
+  `allowed_props`, наборов источников/целей, whitelist с upstream или пинов
+  `provenance.json`. Расхождение `catalog.md` с кодом — отдельный WARN.
+- **Удалённые идентификаторы.** `nrel_html_template`, `nrel_html_parameter_id`,
+  `nrel_sc_template`, `rrel_specific_realisation` больше не входят в whitelist
+  и не упоминаются в знаниях; тест `test_no_stale_environment_identifiers`
+  падает при их возврате.
 
 ### Определения метрик
 

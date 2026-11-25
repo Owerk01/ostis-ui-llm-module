@@ -16,7 +16,8 @@ ROOT = Path(__file__).resolve().parents[2]
 def test_pack_has_expected_counts(pack: dict) -> None:
     assert len(pack["component_types"]) == 16
     assert len(pack["properties"]) == 27
-    assert len(pack["relations"]) == 4
+    assert len(pack["relations"]) == 6
+    assert pack["link_rules"]["action_sources"] == ["button", "select", "menu_item"]
 
 
 def test_pack_is_not_degraded_and_has_provenance(pack: dict) -> None:
@@ -52,12 +53,38 @@ def test_every_property_has_class_type_meaning(pack: dict) -> None:
 def test_relations_match_contract(pack: dict) -> None:
     assert {item["idtf"] for item in pack["relations"]} == {
         "nrel_ui_contains",
+        "nrel_ui_input_target",
+        "nrel_ui_output_target",
         "nrel_ui_has_component",
         "nrel_ui_id",
         "nrel_ui_value",
     }
     for item in pack["relations"]:
         assert item["meaning_ru"]
+    by_kind = {item["kind"]: item for item in pack["relations"]}
+    assert by_kind["input_target"]["sources"] == ["button", "select", "menu_item"]
+    assert by_kind["input_target"]["targets"] == [
+        "text_field",
+        "text_area",
+        "select",
+        "slider",
+    ]
+    assert len(by_kind["output_target"]["targets"]) == 13
+    assert by_kind["contains"]["constraints_ru"]
+
+
+def test_action_id_only_for_action_sources(pack: dict) -> None:
+    """action_id ограничен button/select/menu_item; у остальных 26 свойств."""
+    action_sources = set(pack["link_rules"]["action_sources"])
+    all_keys = {item["key"] for item in pack["properties"]}
+    for item in pack["component_types"]:
+        allowed = set(item["allowed_props"])
+        if item["type_id"] in action_sources:
+            assert allowed == all_keys, item["type_id"]
+            assert "action_id" in allowed
+        else:
+            assert allowed == all_keys - {"action_id"}, item["type_id"]
+            assert "action_id" not in allowed
 
 
 def test_values_of_properties_fit_declared_types(pack: dict) -> None:
@@ -82,3 +109,7 @@ def test_provenance_matches_pack(pack: dict) -> None:
     assert block["commit"] == pack["sources"]["catalog_commit"]
     assert block["count"] == len(pack["component_types"])
     assert block["degraded"] is False
+    labels = provenance["knowledge_blocks"]["catalog_labels"]
+    assert "i18n/ru.ts" in labels["file"]
+    assert labels["count"] == len(pack["component_types"])
+    assert pack["sources"]["labels"].startswith("client/src/i18n/ru.ts")

@@ -6,25 +6,25 @@
       "purpose_ru": "Отображает изображение из ресурса в text_value."
     },
     "sound": {
-      "purpose_ru": "Воспроизводит звук из ресурса в text_value. Все свойства, включая background_color и action_id, общие для всех типов."
+      "purpose_ru": "Воспроизводит звук из ресурса в text_value."
     },
     "text": {
       "purpose_ru": "Статический текст, содержимое в text_value."
     },
     "divider": {
-      "purpose_ru": "Разделитель групп элементов. Все 27 свойств, включая action_id и background_color, общие для всех типов; не инициирует действия."
+      "purpose_ru": "Разделитель групп элементов; не инициирует действия, action_id недоступен."
     },
     "spacer": {
       "purpose_ru": "Пустое пространство для отступов и выравнивания."
     },
     "menu": {
-      "purpose_ru": "Контейнер пунктов меню, дочерние через nrel_ui_contains."
+      "purpose_ru": "Контейнер пунктов меню; дочерние — через nrel_ui_contains."
     },
     "menu_bar": {
       "purpose_ru": "Горизонтальная строка меню для пунктов concept_ui_menu_item."
     },
     "list": {
-      "purpose_ru": "Набор элементов, включается через nrel_ui_contains."
+      "purpose_ru": "Набор элементов; включается через nrel_ui_contains."
     },
     "scroll": {
       "purpose_ru": "Контейнер с прокруткой содержимого."
@@ -39,7 +39,7 @@
       "purpose_ru": "Многострочный ввод текста, значение в text_value."
     },
     "slider": {
-      "purpose_ru": "Числовое значение; границы в каталоге не заданы. min_width/max_width — размер, не диапазон. Значение в text_value."
+      "purpose_ru": "Числовое значение в text_value; границы не заданы."
     },
     "select": {
       "purpose_ru": "Выбор одного значения из набора."
@@ -55,87 +55,87 @@
     "name": {
       "type": "string",
       "default": null,
-      "default_note_ru": "зависит от типа",
-      "meaning_ru": "Имя компонента, отображаемое разработчику в редакторе."
+      "default_note_ru": "по типу",
+      "meaning_ru": "Имя компонента в редакторе."
     },
     "x": {
       "type": "number",
       "default": 24,
-      "meaning_ru": "Координата X левого верхнего угла компонента."
+      "meaning_ru": "Координата X левого верхнего угла."
     },
     "y": {
       "type": "number",
       "default": 24,
-      "meaning_ru": "Координата Y левого верхнего угла компонента."
+      "meaning_ru": "Координата Y левого верхнего угла."
     },
     "width": {
       "type": "number",
       "default": null,
-      "default_note_ru": "зависит от типа",
-      "meaning_ru": "Ширина компонента в пикселях."
+      "default_note_ru": "по типу",
+      "meaning_ru": "Ширина в пикселях."
     },
     "height": {
       "type": "number",
       "default": null,
-      "default_note_ru": "зависит от типа",
-      "meaning_ru": "Высота компонента в пикселях."
+      "default_note_ru": "по типу",
+      "meaning_ru": "Высота в пикселях."
     },
     "order": {
       "type": "number",
       "default": 1,
-      "meaning_ru": "Порядок слоя: чем больше значение, тем выше компонент."
+      "meaning_ru": "Порядок слоя: больше — выше."
     },
     "visible": {
       "type": "boolean",
       "default": true,
-      "meaning_ru": "Видимость компонента в представлении."
+      "meaning_ru": "Видимость в представлении."
     },
     "enabled": {
       "type": "boolean",
       "default": true,
-      "meaning_ru": "Доступность для взаимодействия; false — неактивен."
+      "meaning_ru": "Доступность; false — неактивен."
     },
     "opacity": {
       "type": "number",
       "default": 1,
       "allowed_values": "0…1",
-      "meaning_ru": "Непрозрачность: 0 — прозрачный, 1 — непрозрачный."
+      "meaning_ru": "Непрозрачность: 0 — прозрачный, 1 — нет."
     },
     "text_value": {
       "type": "string",
       "default": "",
-      "meaning_ru": "Текст компонента; у image и sound — ресурс."
+      "meaning_ru": "Текст; у image и sound — ресурс."
     },
     "tooltip": {
       "type": "string",
       "default": "",
-      "meaning_ru": "Подсказка при наведении на компонент."
+      "meaning_ru": "Подсказка при наведении."
     },
     "action_id": {
       "type": "string",
       "default": "",
-      "meaning_ru": "Идентификатор действия компонента."
+      "meaning_ru": "Идентификатор действия; только у источников действий."
     },
     "background_color": {
       "type": "color",
       "default": "#f4f4f4",
-      "default_note_ru": "может переопределяться типом компонента",
-      "meaning_ru": "Цвет фона компонента в формате CSS."
+      "default_note_ru": "зависит от типа",
+      "meaning_ru": "Цвет фона (CSS)."
     },
     "color": {
       "type": "color",
       "default": "#1a1a1a",
-      "meaning_ru": "Цвет текста компонента в формате CSS."
+      "meaning_ru": "Цвет текста (CSS)."
     },
     "border_color": {
       "type": "color",
       "default": "#6f6f6f",
-      "meaning_ru": "Цвет рамки компонента в формате CSS."
+      "meaning_ru": "Цвет рамки (CSS)."
     },
     "border_width": {
       "type": "number",
       "default": 1,
-      "meaning_ru": "Толщина рамки в пикселях."
+      "meaning_ru": "Толщина рамки, px."
     },
     "border_style": {
       "type": "enum",
@@ -145,17 +145,17 @@
         "dashed",
         "none"
       ],
-      "meaning_ru": "Стиль рамки компонента."
+      "meaning_ru": "Стиль рамки."
     },
     "corner_radius": {
       "type": "number",
       "default": 0,
-      "meaning_ru": "Радиус скругления углов в пикселях."
+      "meaning_ru": "Радиус скругления, px."
     },
     "font_size": {
       "type": "number",
       "default": 13,
-      "meaning_ru": "Размер текста в пикселях."
+      "meaning_ru": "Размер текста, px."
     },
     "font_weight": {
       "type": "enum",
@@ -174,42 +174,44 @@
         "center",
         "right"
       ],
-      "meaning_ru": "Выравнивание текста внутри компонента."
+      "meaning_ru": "Выравнивание текста."
     },
     "padding": {
       "type": "number",
       "default": 0,
-      "meaning_ru": "Внутренний отступ до содержимого."
+      "meaning_ru": "Внутренний отступ."
     },
     "margin": {
       "type": "number",
       "default": 0,
-      "meaning_ru": "Внешний отступ от соседних элементов."
+      "meaning_ru": "Внешний отступ."
     },
     "min_width": {
       "type": "number",
       "default": 0,
-      "meaning_ru": "Минимальная ширина компонента."
+      "meaning_ru": "Минимальная ширина."
     },
     "min_height": {
       "type": "number",
       "default": 0,
-      "meaning_ru": "Минимальная высота компонента."
+      "meaning_ru": "Минимальная высота."
     },
     "max_width": {
       "type": "number",
       "default": 0,
-      "meaning_ru": "Максимальная ширина компонента."
+      "meaning_ru": "Максимальная ширина."
     },
     "max_height": {
       "type": "number",
       "default": 0,
-      "meaning_ru": "Максимальная высота компонента."
+      "meaning_ru": "Максимальная высота."
     }
   },
   "relations": {
     "nrel_ui_contains": "Вложенность: интерфейс → корневые, компонент → дочерний; задаёт структуру, а не плоский список.",
-    "nrel_ui_has_component": "Принадлежность: интерфейс → все компоненты, включая вложенные; плоский список состава.",
+    "nrel_ui_input_target": "Связь действия: триггер → откуда читать данные.",
+    "nrel_ui_output_target": "Связь действия: триггер → куда писать результат.",
+    "nrel_ui_has_component": "Плоский состав: интерфейс → все компоненты, включая вложенные.",
     "nrel_ui_id": "Строковый идентификатор интерфейса или компонента; значение хранится в sc-link.",
     "nrel_ui_value": "Значение свойства компонента или текст сообщения диалога; значение хранится в sc-link."
   }

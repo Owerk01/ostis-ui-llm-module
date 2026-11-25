@@ -26,19 +26,35 @@ def test_knowledge_fits_budget(pack: dict, template: str) -> None:
 def test_component_render_one_line_per_type(pack: dict) -> None:
     text = render_component_types(pack)
     lines = [line for line in text.splitlines() if line.strip()]
-    assert len(lines) == len(pack["component_types"]) + 1
+    assert len(lines) == len(pack["component_types"]) + 2
     assert lines[0] == f"типов: {len(pack['component_types'])}"
+    assert "action_id доступен только: button, select, menu_item" in lines[1]
     assert "concept_ui_button | Кнопка" in text
-    assert "по умолчанию:" in text
+    assert "свойств: 27 (с action_id)" in text
+    assert "concept_ui_text | Текст" in text
+    assert "свойств: 26 (без action_id)" in text
+    assert "умолч.:" in text
 
 
 def test_properties_render_one_line_per_property(pack: dict) -> None:
     text = render_properties(pack)
     lines = [line for line in text.splitlines() if line.strip()]
     assert len(lines) == len(pack["properties"]) + 1
-    assert lines[0] == f"свойств: {len(pack['properties'])} (все типы)"
+    assert lines[0].startswith(f"свойств: {len(pack['properties'])}")
+    assert "кроме action_id (только button, select, menu_item)" in lines[0]
     assert "concept_ui_action_id | action_id" in text
     assert "concept_ui_font_size | font_size" in text
+
+
+def test_relations_render_sources_and_targets(pack: dict) -> None:
+    text = render_sections(pack)["relations"]
+    assert text.splitlines()[0] == f"отношений: {len(pack['relations'])}"
+    assert "nrel_ui_input_target" in text
+    assert "источники: button, select, menu_item" in text
+    assert "цели: text_field, text_area, select, slider" in text
+    assert "nrel_ui_output_target" in text
+    assert "nrel_ui_contains" in text
+    assert "без ограничений" in text
 
 
 def test_prompt_contains_all_sections_and_question(pack: dict, template: str) -> None:
@@ -62,6 +78,17 @@ def test_few_shot_pairs_preserved(pack: dict, template: str) -> None:
     for pair in zip(body[::2], body[1::2]):
         assert pair[0]["role"] == "user"
         assert pair[1]["role"] == "assistant"
+
+
+def test_few_shot_matches_action_id_and_link_truth() -> None:
+    """Few-shot не должен учить, что action_id есть у всех типов."""
+    text = " ".join(item["content"] for item in FEW_SHOT)
+    assert "одинаковый набор свойств" not in text
+    assert "У divider нет action_id" in text
+    assert "у `concept_ui_divider` нет `action_id`" in text
+    assert "nrel_ui_input_target" in text
+    assert "nrel_ui_output_target" in text
+    assert "concept_ui_text` не является источником действия" in text
 
 
 def test_methodology_grouped_with_counts(pack: dict) -> None:

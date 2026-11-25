@@ -37,9 +37,12 @@ def test_generated_scs_attaches_without_declaring(pack: dict) -> None:
     text = GENERATED.read_text(encoding="utf-8")
     assert not re.search(r"<-\s*sc_node_", text), "сгенерированный файл не должен объявлять типы"
     blocks = re.findall(r"nrel_ui_knowledge_text:", text)
-    assert len(blocks) == len(pack["component_types"]) + len(pack["properties"])
+    assert len(blocks) == (
+        len(pack["component_types"]) + len(pack["properties"]) + len(pack["relations"])
+    )
     assert "concept_ui_button" in text
     assert "concept_ui_font_size" in text
+    assert "nrel_ui_input_target" in text
 
 
 def test_generated_texts_match_pack_fallback(pack: dict) -> None:
@@ -48,6 +51,7 @@ def test_generated_texts_match_pack_fallback(pack: dict) -> None:
         _global_defaults,
         component_type_line,
         property_line,
+        relation_line,
     )
 
     text = GENERATED.read_text(encoding="utf-8")
@@ -56,3 +60,5 @@ def test_generated_texts_match_pack_fallback(pack: dict) -> None:
         assert line in text, item["sc_class"]
     for prop in pack["properties"]:
         assert property_line(prop) in text, prop["sc_class"]
+    for relation in pack["relations"]:
+        assert relation_line(relation) in text, relation["idtf"]

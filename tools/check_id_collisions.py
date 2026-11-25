@@ -82,10 +82,10 @@ def check() -> list[str]:
     model_text = ABSTRACT_MODEL.read_text(encoding="utf-8")
     if GENERATED.exists():
         for idtf in referenced_types(GENERATED):
-            if idtf not in EXISTING_CLASSES:
-                errors.append(f"{GENERATED.name}: текст навешен на чужой класс {idtf}")
+            if idtf not in EXISTING_CLASSES and idtf not in EXISTING_RELATIONS:
+                errors.append(f"{GENERATED.name}: текст навешен на чужой идентификатор {idtf}")
             elif not re.search(rf"\b{re.escape(idtf)}\b", model_text):
-                errors.append(f"{GENERATED.name}: класса {idtf} нет в abstract_ui_model.scs")
+                errors.append(f"{GENERATED.name}: идентификатора {idtf} нет в abstract_ui_model.scs")
 
     return errors
 

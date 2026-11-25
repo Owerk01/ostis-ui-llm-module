@@ -28,5 +28,5 @@ ui_env_target_system
 ui_env_html_representation
 <- concept_ui_environment_note;
 => nrel_main_idtf: [HTML-представление компонентов] (* <- lang_ru;; *);
-=> nrel_ui_knowledge_text: [Компоненты могут иметь HTML-представление: nrel_html_template — шаблон, nrel_html_parameter_id — параметры, nrel_html_representation — результат. Трансляцию выполняет отдельный агент действием action_translate_sc_to_html; ассистент его не вызывает.];
-=> nrel_ui_knowledge_source: [Glentas/ostis-ui@a673766:translators/HTMLTranslatorModule/keynodes/HTMLTranslatorKeynodes.hpp];;
+=> nrel_ui_knowledge_text: [Компоненты могут иметь HTML-представление: nrel_html_representation — результат трансляции. Трансляцию выполняет отдельный агент действием action_translate_sc_to_html; ассистент его не вызывает.];
+=> nrel_ui_knowledge_source: [Glentas/ostis-ui@cff70b1:translators/HTMLTranslatorModule/keynodes/HTMLTranslatorKeynodes.hpp];;

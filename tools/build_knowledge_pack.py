@@ -14,6 +14,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -39,9 +40,33 @@ DOMAIN_FILES = {
 
 RELATION_KINDS = {
     "nrel_ui_contains": "contains",
+    "nrel_ui_input_target": "input_target",
+    "nrel_ui_output_target": "output_target",
     "nrel_ui_has_component": "has_component",
     "nrel_ui_id": "id",
     "nrel_ui_value": "value",
+}
+
+# Резервный путь (без tsx) не может прочитать linkRules.ts. Эти наборы
+# дублируют ground truth и проверяются tools/check_upstream_drift.py.
+FALLBACK_LINK_RULES = {
+    "action_sources": ["button", "select", "menu_item"],
+    "input_targets": ["text_field", "text_area", "select", "slider"],
+    "output_targets": [
+        "text",
+        "text_field",
+        "text_area",
+        "image",
+        "sound",
+        "list",
+        "menu",
+        "menu_bar",
+        "menu_item",
+        "select",
+        "slider",
+        "window",
+        "scroll",
+    ],
 }
 
 
@@ -59,6 +84,26 @@ def git_commit(path: Path) -> str:
         ).stdout.strip()
     except (OSError, subprocess.CalledProcessError):
         return "unknown"
+
+
+def git_info(path: Path) -> dict[str, str]:
+    """HEAD, дата коммита и ветка рабочей копии external/."""
+    def run(*args: str) -> str:
+        try:
+            return subprocess.run(
+                ["git", "-C", str(path), *args],
+                check=True,
+                capture_output=True,
+                text=True,
+            ).stdout.strip()
+        except (OSError, subprocess.CalledProcessError):
+            return "unknown"
+
+    return {
+        "commit": run("rev-parse", "HEAD"),
+        "commit_date": run("log", "-1", "--format=%cI"),
+        "branch": run("rev-parse", "--abbrev-ref", "HEAD"),
+    }
 
 
 def parse_knowledge_scs(path: Path) -> list[dict[str, str]]:
@@ -139,6 +184,10 @@ def load_domain_knowledge() -> tuple[dict[str, list[dict[str, str]]], dict[str, 
 
 def run_ts_dump() -> dict[str, Any]:
     command = ["npx", "--yes", "tsx", "tools/dump_catalog.ts"]
+    env = dict(os.environ)
+    # catalog.ts импортирует i18n, а та — React-провайдер. Дампу данные нужны,
+    # React не нужен: подставляем минимальную заглушку из tools/stubs.
+    env["NODE_PATH"] = str(ROOT / "tools" / "stubs")
     result = subprocess.run(
         command,
         cwd=ROOT,
@@ -146,6 +195,7 @@ def run_ts_dump() -> dict[str, Any]:
         text=True,
         timeout=300,
         check=False,
+        env=env,
     )
     if result.returncode != 0:
         raise RuntimeError(f"npx tsx завершился с кодом {result.returncode}: {result.stderr[-1000:]}")
@@ -213,6 +263,7 @@ def parse_catalog_md() -> dict[str, Any]:
         "types": types,
         "properties": properties,
         "relations": relations,
+        "link_rules": FALLBACK_LINK_RULES,
     }
 
 
@@ -227,17 +278,33 @@ def build_pack(
     type_overrides = overrides.get("types", {})
     prop_overrides = overrides.get("properties", {})
     relation_meanings = overrides.get("relations", {})
+    link_rules = {
+        key: list(dump.get("link_rules", {}).get(key, FALLBACK_LINK_RULES[key]))
+        for key in ("action_sources", "input_targets", "output_targets")
+    }
+    action_sources = set(link_rules["action_sources"])
+    property_keys = [item["key"] for item in dump["properties"]]
 
     component_types: list[dict[str, Any]] = []
     for item in dump["types"]:
         type_id = item["type_id"]
         purpose = type_overrides.get(type_id, {}).get("purpose_ru", "")
+        allowed_props = item.get("allowed_props")
+        if not allowed_props:
+            # Fallback: повторяем правило catalog.ts — action_id только у
+            # источников действий, остальные свойства общие.
+            allowed_props = [
+                key
+                for key in property_keys
+                if key != "action_id" or type_id in action_sources
+            ]
         component_types.append(
             {
                 "type_id": type_id,
                 "sc_class": item["sc_class"],
                 "label_ru": item["label_ru"],
                 "purpose_ru": purpose,
+                "allowed_props": list(allowed_props),
                 "defaults": item.get("defaults", {}),
             }
         )
@@ -259,29 +326,41 @@ def build_pack(
             record["allowed_values"] = override["allowed_values"]
         properties.append(record)
 
-    relations = [
-        {
+    relations: list[dict[str, Any]] = []
+    for item in dump["relations"]:
+        kind = item.get("kind", RELATION_KINDS.get(item["idtf"], ""))
+        record: dict[str, Any] = {
             "idtf": item["idtf"],
-            "kind": item.get("kind", RELATION_KINDS.get(item["idtf"], "")),
+            "kind": kind,
             "meaning_ru": relation_meanings.get(item["idtf"], ""),
         }
-        for item in dump["relations"]
-    ]
+        if kind in {"input_target", "output_target"}:
+            record["sources"] = list(link_rules["action_sources"])
+            record["targets"] = list(link_rules[f"{kind}s"])
+        elif kind == "contains":
+            record["constraints_ru"] = "без ограничений по типам"
+        relations.append(record)
 
     return {
         "pack_version": generated_at,
-        "prompt_version": "v1",
+        "prompt_version": "v4",
         "generated_at": generated_at,
         "degraded": degraded,
         "sources": {
             "catalog": "external/ostis-ui-editor",
             "catalog_commit": git_commit(EDITOR),
-            "primary": "client/src/model/catalog.ts + client/src/sc/names.ts",
+            "primary": (
+                "client/src/model/catalog.ts + client/src/model/linkRules.ts + "
+                "client/src/sc/names.ts + client/src/model/types.ts"
+            ),
+            "labels": "client/src/i18n/ru.ts (ключ type.<typeId>)",
+            "labels_fallback": "docs/catalog.md, колонка «Название»",
             "fallback": "docs/catalog.md" if degraded else None,
         },
         "component_types": component_types,
         "properties": properties,
         "relations": relations,
+        "link_rules": link_rules,
         "principles": domain["principles"],
         "methodology_stages": domain["methodology_stages"],
         "environment_notes": domain["environment_notes"],
@@ -299,9 +378,21 @@ def update_provenance(pack: dict[str, Any], degraded: bool) -> None:
     source_file = (
         "docs/catalog.md"
         if degraded
-        else "client/src/model/catalog.ts; client/src/sc/names.ts; client/src/model/propSets.ts"
+        else (
+            "client/src/model/catalog.ts; client/src/model/linkRules.ts; "
+            "client/src/sc/names.ts; client/src/model/propSets.ts; "
+            "client/src/model/types.ts"
+        )
     )
     provenance["generated_at"] = extracted_at
+
+    # Пины рабочих копий external/: обновляются при каждой пересборке,
+    # чтобы drift-check сравнивал pack именно с этими коммитами.
+    for entry in provenance.get("repositories", {}).values():
+        path = ROOT / entry.get("path", "")
+        if path.exists():
+            entry.update(git_info(path))
+
     provenance["knowledge_blocks"] = {
         "catalog_types": {
             "repo": "https://github.com/vodo4kin/ostis-ui-editor",
@@ -322,10 +413,27 @@ def update_provenance(pack: dict[str, Any], degraded: bool) -> None:
         "catalog_relations": {
             "repo": "https://github.com/vodo4kin/ostis-ui-editor",
             "commit": commit,
-            "file": source_file,
+            "file": "client/src/sc/names.ts; client/src/model/linkRules.ts",
             "extracted_at": extracted_at,
             "degraded": degraded,
             "count": len(pack["relations"]),
+        },
+        "catalog_labels": {
+            "repo": "https://github.com/vodo4kin/ostis-ui-editor",
+            "commit": commit,
+            "file": "client/src/i18n/ru.ts (ключ type.<typeId>)",
+            "fallback": "docs/catalog.md, колонка «Название»",
+            "extracted_at": extracted_at,
+            "degraded": degraded,
+            "count": len(pack["component_types"]),
+        },
+        "catalog_links": {
+            "repo": "https://github.com/vodo4kin/ostis-ui-editor",
+            "commit": commit,
+            "file": "client/src/model/linkRules.ts",
+            "extracted_at": extracted_at,
+            "degraded": degraded,
+            "count": len(pack.get("link_rules", {})),
         },
     }
 

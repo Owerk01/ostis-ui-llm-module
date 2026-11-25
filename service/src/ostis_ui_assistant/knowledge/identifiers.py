@@ -56,6 +56,8 @@ EXISTING_CLASSES = {
 EXISTING_RELATIONS = {
     "nrel_inclusion",
     "nrel_ui_contains",
+    "nrel_ui_input_target",
+    "nrel_ui_output_target",
     "nrel_ui_has_component",
     "nrel_ui_id",
     "nrel_ui_value",
@@ -145,9 +147,14 @@ PROPERTY_KEYS = {
 ENVIRONMENT_IDENTIFIERS = {
     "action_translate_sc_to_html",
     "concept_current_ostis_ui_model",
+    "nrel_html_representation",
+}
+
+# Удалены из keynodes транслятора к 25.11.2026. Держим отдельно, чтобы тест
+# test_no_stale_environment_identifiers падал при попытке вернуть имя в знания.
+REMOVED_ENVIRONMENT_IDENTIFIERS = {
     "nrel_html_template",
     "nrel_html_parameter_id",
-    "nrel_html_representation",
     "nrel_sc_template",
     "rrel_specific_realisation",
 }

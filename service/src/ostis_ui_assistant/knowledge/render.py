@@ -61,8 +61,8 @@ FEW_SHOT: list[dict[str, str]] = [
             "текст задаётся свойством `text_value`, а действие — `action_id`. "
             "`concept_ui_menu_item` — пункт меню, он имеет смысл внутри "
             "`concept_ui_menu` или `concept_ui_menu_bar`, куда включается отношением "
-            "`nrel_ui_contains`. Оба типа входят в `concept_ui_object` и имеют "
-            "одинаковый набор свойств."
+            "`nrel_ui_contains`. Оба типа относятся к источникам действий, поэтому "
+            "у обоих доступен `action_id`."
         ),
     },
     {
@@ -90,7 +90,9 @@ FEW_SHOT: list[dict[str, str]] = [
             "`visible`, `enabled`, `opacity`, `text_value`, `tooltip`, `action_id`, "
             "`background_color`, `color`, `border_color`, `border_width`, `border_style`, "
             "`corner_radius`, `font_size`, `font_weight`, `text_align`, `padding`, "
-            "`margin`, `min_width`, `min_height`, `max_width`, `max_height`."
+            "`margin`, `min_width`, `min_height`, `max_width`, `max_height`. "
+            "`action_id` доступен только типам-источникам действий: `concept_ui_button`, "
+            "`concept_ui_select`, `concept_ui_menu_item`; у остальных типов 26 свойств."
         ),
     },
     {
@@ -112,10 +114,53 @@ FEW_SHOT: list[dict[str, str]] = [
     {
         "role": "assistant",
         "content": (
-            "Нет, это не так. Все 27 свойств из раздела `catalog_properties`, включая "
-            "`action_id` и `background_color`, применимы к каждому типу компонентов. "
-            "`concept_ui_divider` отличается назначением — он разделяет группы "
-            "элементов, а не инициирует действия."
+            "Верно: у `concept_ui_divider` нет `action_id`. Это свойство доступно только "
+            "источникам действий — `concept_ui_button`, `concept_ui_select`, "
+            "`concept_ui_menu_item`; у divider и других неисточников 26 общих свойств. "
+            "Divider отличается назначением: он разделяет группы элементов, а не "
+            "инициирует действия."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Что такое nrel_ui_input_target?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "`nrel_ui_input_target` задаёт связь «триггер → откуда читать»: источник "
+            "действия читает данные из целевого компонента. Источники — "
+            "`concept_ui_button`, `concept_ui_select`, `concept_ui_menu_item`; цели — "
+            "`concept_ui_text_field`, `concept_ui_text_area`, `concept_ui_select`, "
+            "`concept_ui_slider`."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Какие компоненты могут быть источником nrel_ui_output_target?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "Источником `nrel_ui_output_target` могут быть только триггеры действий: "
+            "`concept_ui_button`, `concept_ui_select`, `concept_ui_menu_item`. Связь "
+            "означает «триггер → куда писать результат»; целями могут быть 13 типов, "
+            "включая `concept_ui_text`, `concept_ui_text_field`, `concept_ui_image`, "
+            "`concept_ui_list` и `concept_ui_window`."
+        ),
+    },
+    {
+        "role": "user",
+        "content": "Можно ли связать concept_ui_text с nrel_ui_input_target?",
+    },
+    {
+        "role": "assistant",
+        "content": (
+            "Нет. `nrel_ui_input_target` допустимо только от источника действия "
+            "(`concept_ui_button`, `concept_ui_select`, `concept_ui_menu_item`) к "
+            "`concept_ui_text_field`, `concept_ui_text_area`, `concept_ui_select` или "
+            "`concept_ui_slider`. `concept_ui_text` не является источником действия, "
+            "поэтому такая связь недопустима."
         ),
     },
     {
@@ -253,15 +298,29 @@ def component_type_line(item: dict[str, Any], global_defaults: dict[str, Any]) -
         f"{item['sc_class']} | {item['label_ru']} | ключ: {item['type_id']} "
         f"| назначение: {item.get('purpose_ru', '')}"
     )
+    allowed = item.get("allowed_props")
+    if allowed is not None:
+        marker = "с action_id" if "action_id" in allowed else "без action_id"
+        line += f" | свойств: {len(allowed)} ({marker})"
     if defaults:
-        line += f" | по умолчанию: {defaults}"
+        line += f" | умолч.: {defaults}"
     return line
 
 
 def render_component_types(pack: dict[str, Any]) -> str:
     global_defaults = _global_defaults(pack)
     items = pack.get("component_types", [])
+    action_sources = pack.get("link_rules", {}).get("action_sources") or [
+        item["type_id"]
+        for item in items
+        if "action_id" in (item.get("allowed_props") or [])
+    ]
     lines: list[str] = [f"типов: {len(items)}"]
+    if action_sources:
+        lines.append(
+            f"свойств всего: {len(pack.get('properties', []))}; "
+            f"action_id доступен только: {', '.join(action_sources)}"
+        )
     for item in items:
         lines.append(item.get("kb_text") or component_type_line(item, global_defaults))
     return "\n".join(lines)
@@ -275,7 +334,7 @@ def property_line(prop: dict[str, Any]) -> str:
         default_text = _format_value(default)
     line = (
         f"{prop['sc_class']} | {prop['key']} | {prop.get('type', 'string')} "
-        f"| по умолчанию: {default_text} | смысл: {prop.get('meaning_ru', '')}"
+        f"| умолч.: {default_text} | {prop.get('meaning_ru', '')}"
     )
     allowed = prop.get("allowed_values")
     if allowed:
@@ -286,18 +345,44 @@ def property_line(prop: dict[str, Any]) -> str:
 
 def render_properties(pack: dict[str, Any]) -> str:
     properties = pack.get("properties", [])
-    lines: list[str] = [f"свойств: {len(properties)} (все типы)"]
+    action_sources = pack.get("link_rules", {}).get("action_sources") or [
+        item["type_id"]
+        for item in pack.get("component_types", [])
+        if "action_id" in (item.get("allowed_props") or [])
+    ]
+    header = f"свойств: {len(properties)}; общие для всех типов"
+    if action_sources:
+        header += (
+            f", кроме action_id (только {', '.join(action_sources)}); "
+            "у остальных типов свойств на одно меньше"
+        )
+    lines: list[str] = [header]
     lines.extend(
         prop.get("kb_text") or property_line(prop) for prop in properties
     )
     return "\n".join(lines)
 
 
+def relation_line(item: dict[str, Any]) -> str:
+    line = f"{item['idtf']} | {item.get('meaning_ru', '')}"
+    sources = item.get("sources")
+    targets = item.get("targets")
+    if sources:
+        line += f" | источники: {', '.join(sources)}"
+    if targets:
+        line += f" | цели: {', '.join(targets)}"
+    if item.get("constraints_ru"):
+        line += " | без ограничений"
+    return line
+
+
 def render_relations(pack: dict[str, Any]) -> str:
-    return "\n".join(
-        f"{item['idtf']} | {item.get('meaning_ru', '')}"
-        for item in pack.get("relations", [])
+    relations = pack.get("relations", [])
+    lines: list[str] = [f"отношений: {len(relations)}"]
+    lines.extend(
+        item.get("kb_text") or relation_line(item) for item in relations
     )
+    return "\n".join(lines)
 
 
 def _render_knowledge_items(

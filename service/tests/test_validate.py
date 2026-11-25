@@ -2,12 +2,16 @@
 
 from __future__ import annotations
 
+from pathlib import Path
+
 from ostis_ui_assistant.knowledge.validate import (
     REMOVAL_NOTE,
     extract_identifiers,
     find_unknown,
     validate_answer,
 )
+
+ROOT = Path(__file__).resolve().parents[2]
 
 
 def test_known_identifiers_pass_untouched() -> None:
@@ -104,6 +108,36 @@ def test_unknown_knowledge_identifier_removed() -> None:
 
 def test_environment_identifier_allowed() -> None:
     """Идентификаторы HTML-трансляции упоминаются, но не считаются галлюцинацией."""
-    text = "Трансляцию выполняет `action_translate_sc_to_html`, а шаблон задаёт `nrel_html_template`."
+    text = "Трансляцию выполняет `action_translate_sc_to_html`, результат хранит `nrel_html_representation`."
     assert find_unknown(text) == []
     assert validate_answer(text).unknown_after == []
+
+
+def test_no_stale_environment_identifiers() -> None:
+    """Удалённые из keynodes имена не возвращаются ни в whitelist, ни в знания."""
+    from ostis_ui_assistant.knowledge.identifiers import (
+        ALL_IDENTIFIERS,
+        ENVIRONMENT_IDENTIFIERS,
+        REMOVED_ENVIRONMENT_IDENTIFIERS,
+    )
+
+    assert not (ENVIRONMENT_IDENTIFIERS & REMOVED_ENVIRONMENT_IDENTIFIERS)
+    assert not (ALL_IDENTIFIERS & REMOVED_ENVIRONMENT_IDENTIFIERS)
+    for stale in REMOVED_ENVIRONMENT_IDENTIFIERS:
+        assert find_unknown(f"`{stale}`") == [stale]
+    texts = [
+        (ROOT / "knowledge" / "pack.json").read_text(encoding="utf-8"),
+        (ROOT / "knowledge" / "purpose_overrides.json").read_text(encoding="utf-8"),
+        (ROOT / "knowledge" / "prompt_v4.md").read_text(encoding="utf-8"),
+        (ROOT / "kb" / "ui_assistant" / "ui_environment.scs").read_text(encoding="utf-8"),
+        (
+            ROOT
+            / "kb"
+            / "ui_assistant"
+            / "generated"
+            / "ui_catalog_knowledge.scs"
+        ).read_text(encoding="utf-8"),
+    ]
+    for text in texts:
+        for stale in REMOVED_ENVIRONMENT_IDENTIFIERS:
+            assert stale not in text, stale

@@ -9,7 +9,7 @@ PY    := $(VENV)/bin/python
 
 .PHONY: help setup kb machine machine-stop ollama ollama-stop pull venv smoke \
         up down service panel pack kb-load kb-load-noschema test eval agent agent-start agent-stop \
-        panel-start panel-stop smoke-action
+        panel-start panel-stop smoke-action drift
 
 help:
 	@echo "Платформа:"
@@ -86,6 +86,9 @@ pack: venv
 	@$(PY) tools/generate_kb_scs.py
 	@$(PY) tools/check_id_collisions.py
 
+drift: venv
+	@$(PY) tools/check_upstream_drift.py
+
 service: venv
 	@test -f .env || echo "WARN: .env не найден, используются значения по умолчанию из .env.example" >&2
 	@$(PY) -m ostis_ui_assistant.main
@@ -132,6 +135,7 @@ kb-load-noschema: machine-stop
 
 test: venv
 	@$(PY) tools/check_id_collisions.py
+	@$(PY) tools/check_upstream_drift.py
 	@$(VENV)/bin/pytest -q service/tests
 	@if [ -d panel/node_modules ]; then \
 		cd panel && npm run typecheck && npm test; \

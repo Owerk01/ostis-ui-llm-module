@@ -200,6 +200,15 @@ def load_pack_from_kb(
             else:
                 missing.append(item["sc_class"])
 
+        # Тексты отношений тоже навешиваются generated-фрагментом. Узел
+        # nrel_ui_* ищется через get(), поэтому read-путь ничего не создаёт.
+        for item in result.get("relations", []):
+            text = _class_text(item["idtf"])
+            if text:
+                item["kb_text"] = text
+            else:
+                missing.append(item["idtf"])
+
         processes = _read_items(KNOWLEDGE_CLASS)
         stages = _read_items(STAGE_CLASS)
         result["principles"] = _merge_section(
@@ -226,6 +235,7 @@ def load_pack_from_kb(
     status.counts = {
         "component_types": len(result.get("component_types", [])),
         "properties": len(result.get("properties", [])),
+        "relations": len(result.get("relations", [])),
         "principles": len(result.get("principles", [])),
         "methodology_stages": len(result.get("methodology_stages", [])),
         "environment_notes": len(result.get("environment_notes", [])),

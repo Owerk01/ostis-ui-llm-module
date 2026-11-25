@@ -7,9 +7,9 @@
 
 | Что | Откуда | Коммит |
 |---|---|---|
-| Типы, свойства, значения по умолчанию | `external/ostis-ui-editor` (`docs/catalog.md`, `client/src/model/catalog.ts`, `client/src/model/propSets.ts`, `client/src/sc/names.ts`) | `f6eb4fa` |
-| Формальная схема UI | `external/ostis-ui-editor/docs/abstract_ui_model.scs` | `f6eb4fa` |
-| HTML-представление (справка) | `external/ostis-ui` | `a673766` |
+| Типы, свойства, связи, значения по умолчанию | `external/ostis-ui-editor` (`client/src/model/catalog.ts`, `client/src/model/linkRules.ts`, `client/src/model/propSets.ts`, `client/src/model/types.ts`, `client/src/sc/names.ts`, `client/src/i18n/ru.ts`) | `6fbb2e6` |
+| Формальная схема UI | `external/ostis-ui-editor/docs/abstract_ui_model.scs` | `6fbb2e6` |
+| HTML-представление (справка) | `external/ostis-ui` | `cff70b1` |
 | A/B/C-адаптация (справка) | `external/UI-adaptation` | `5c3d627` |
 
 Фактические коммиты — [`../knowledge/provenance.json`](../knowledge/provenance.json).
@@ -19,21 +19,24 @@
 `knowledge/pack.json` — нормализованная выжимка каталога и домен-знаний,
 которая целиком подаётся в системный промпт. RAG и эмбеддингов нет: при
 `num_ctx=8192` блок знаний занимает **3497 токенов** (оценка `len/3`), системный
-промпт вместе с few-shot — около 4120 токенов по факту прогона. Это верхняя
+промпт вместе с few-shot — около 5260 токенов (оценка). Это верхняя
 граница бюджета 3500; при её превышении `render.py` усекает
 `methodology_stages` и `environment_notes` до заголовков и пишет WARN.
 
 Состав:
 
 - `component_types` — 16 типов: `type_id`, `sc_class`, `label_ru`, `purpose_ru`,
-  `defaults` (полный набор свойств из `catalog.ts`);
+  `allowed_props` (из `catalog.ts`), `defaults` (полный набор свойств);
 - `properties` — 27 свойств: `key`, `sc_class`, `type`, `default`, допустимые
   значения, `meaning_ru`;
-- `relations` — 4 отношения: `nrel_ui_contains`, `nrel_ui_has_component`,
-  `nrel_ui_id`, `nrel_ui_value`;
+- `relations` — 6 отношений: `nrel_ui_contains`, `nrel_ui_input_target`,
+  `nrel_ui_output_target`, `nrel_ui_has_component`, `nrel_ui_id`,
+  `nrel_ui_value`; у связей действий указаны источники и цели;
+- `link_rules` — наборы `action_sources`, `input_targets`, `output_targets`
+  из `linkRules.ts`;
 - `principles` — 5 принципов;
 - `methodology_stages` — 1 узел «процессы методики» + 10 этапов;
-- `environment_notes` — 4 сведения об устройстве среды.
+- `environment_notes` — 5 сведений об устройстве среды.
 
 Русские тексты принципов, методики и среды живут в `kb/ui_assistant/*.scs`.
 `build_knowledge_pack.py` парсит их в pack, чтобы режимы `kb` и `fallback`
@@ -41,10 +44,11 @@
 
 Русские назначения и смыслы хранятся отдельно в
 `knowledge/purpose_overrides.json`, чтобы не теряться при пересборке:
-`catalog.ts` даёт только машинные defaults и ярлыки.
+`catalog.ts` даёт машинные defaults и `allowed_props`, подписи типов — из
+`client/src/i18n/ru.ts` (`type.<typeId>`).
 
 `render.py` добавляет в начало перечислений строки `типов: 16`,
-`свойств: 27 (все типы)`, `принципов: 5`. Они занимают ~15 токенов, но убирают
+`свойств: 27; …`, `отношений: 6`, `принципов: 5`. Они убирают
 пропуски последнего элемента в ответах «перечисли все». Рабочий шаблон —
 `knowledge/prompt_v4.md`; он закреплён в `Settings.prompt_path` и `.env.example`
 (`PROMPT_VERSION=v4`).
@@ -57,9 +61,10 @@ idtf (`ui_stage_initial_*`, `ui_stage_editing_*`, `ui_stage_adaptation_*`) и
 
 В `purpose_overrides.json` уточнены назначения, где модель ошибалась: у slider
 границы диапазона каталогом не заданы (`min_width`/`max_width` — размер), у
-divider и sound прямо указано, что набор свойств общий для всех типов, включая
-`action_id` и `background_color`. Добавлена заметка об HTML-представлении
-компонентов в `ui_environment.scs` с источником на репозиторий транслятора.
+divider прямо указано, что `action_id` ему недоступен. Ограничение `action_id`
+(только `button`, `select`, `menu_item`) приходит из `allowed_props` каталога,
+а не задаётся вручную. Заметка об HTML-представлении компонентов в
+`ui_environment.scs` содержит только актуальный `nrel_html_representation`.
 
 Бюджет блока ЗНАНИЙ — ровно **3500 токенов**: новые тексты сжаты так, чтобы
 усечение methodology/environment не срабатывало. Тест `test_knowledge_fits_budget`
@@ -91,10 +96,10 @@ python tools/build_knowledge_pack.py
 
 | Событие | Действие |
 |---|---|
-| Изменился `catalog.ts`/`names.ts` в редакторе | `make pack`, прогнать `make test`, при необходимости обновить `purpose_overrides.json` |
-| Добавился тип или свойство | проверить, что идентификатор есть в зафиксированном контракте `service/src/ostis_ui_assistant/knowledge/identifiers.py`; иначе — согласовать имя с командой |
-| Изменились defaults | пересобрать pack; тест `test_pack.py` проверит типы значений |
-| Коммит external обновился | `provenance.json` обновится сам; зафиксировать новый хеш |
+| Изменился `catalog.ts`/`linkRules.ts`/`names.ts`/`types.ts`/i18n в редакторе | `make pack`, затем `make drift`; `make test` запускает drift автоматически |
+| Добавился тип, свойство или связь | проверить, что идентификатор есть в зафиксированном контракте `service/src/ostis_ui_assistant/knowledge/identifiers.py`; иначе — согласовать имя с командой |
+| Изменились defaults или `allowed_props` | пересобрать pack; `test_pack.py` проверит типы значений и ограничение `action_id` |
+| Коммит external обновился | `make pack` обновит `provenance.json`; `make drift` сверит пины с рабочими копиями |
 
 ## Сборка БЗ
 
@@ -110,15 +115,15 @@ sc-machine: `make kb` проверяет pid и отказывается пер�
 
 | Файл | Содержимое |
 |---|---|
-| `kb/ui_assistant/ui_dialog.scs` | классы диалога, знаний, 9 `nrel_ui_*`, класс действия |
+| `kb/ui_assistant/ui_dialog.scs` | классы диалога, знаний, 12 `nrel_ui_*`, класс действия |
 | `kb/ui_assistant/ui_principles.scs` | 5 принципов с текстом и provenance |
 | `kb/ui_assistant/ui_methodology.scs` | процесс методики + 10 этапов |
-| `kb/ui_assistant/ui_environment.scs` | 4 сведения об устройстве среды |
-| `kb/ui_assistant/generated/ui_catalog_knowledge.scs` | 16+27 текстов на существующих классах |
+| `kb/ui_assistant/ui_environment.scs` | 5 сведений об устройстве среды |
+| `kb/ui_assistant/generated/ui_catalog_knowledge.scs` | 16+27+6 текстов на существующих классах и отношениях |
 
 Сгенерированный файл **ничего не объявляет**: только
-`=> nrel_ui_knowledge_text` и `=> nrel_ui_knowledge_source` на классах
-редактора. Это проверяет `tools/check_id_collisions.py` и тест
+`=> nrel_ui_knowledge_text` и `=> nrel_ui_knowledge_source` на классах и
+отношениях редактора. Это проверяет `tools/check_id_collisions.py` и тест
 `test_generated_scs_attaches_without_declaring`.
 
 ## Откуда берутся ответы
@@ -126,6 +131,7 @@ sc-machine: `make kb` проверяет pid и отказывается пер�
 - При `KNOWLEDGE_SOURCE=kb` сервис при старте читает:
   - тексты 16 типов и 27 свойств — `nrel_ui_knowledge_text` у классов
     `concept_ui_*`;
+  - тексты 6 отношений — `nrel_ui_knowledge_text` у узлов `nrel_ui_*`;
   - принципы — экземпляры `concept_ui_development_principle`;
   - методику — `concept_ui_knowledge` (процессы) + `concept_ui_development_stage`;
   - среду — `concept_ui_environment_note`.
@@ -154,9 +160,9 @@ sc-machine: `make kb` проверяет pid и отказывается пер�
 # 1. Источники истины — только для чтения, фиксируем коммиты из provenance.json
 mkdir -p external
 git clone https://github.com/vodo4kin/ostis-ui-editor external/ostis-ui-editor
-git -C external/ostis-ui-editor checkout f6eb4fa
+git -C external/ostis-ui-editor checkout 6fbb2e6
 git clone -b feature/SCS_to_HTML https://github.com/Glentas/ostis-ui external/ostis-ui
-git -C external/ostis-ui checkout a673766
+git -C external/ostis-ui checkout cff70b1
 git clone https://github.com/Oddchew/UI-adaptation external/UI-adaptation
 git -C external/UI-adaptation checkout 5c3d627
 git clone -b 0.10.0 https://github.com/ostis-apps/ostis-example-app external/ostis-example-app
