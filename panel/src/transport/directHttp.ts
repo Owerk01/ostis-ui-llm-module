@@ -5,6 +5,7 @@
  * /ask (SSE), /cancel. В основном режиме панель использует scMemory.ts.
  */
 
+import { contextPayload, normalizeAskOptions } from './askOptions.ts'
 import {
   AssistantBusy,
   AssistantCancelled,
@@ -19,6 +20,7 @@ import {
 } from './outcome.ts'
 import { resolveClientTimeoutMs } from './timeout.ts'
 import type {
+  AskOptionsArg,
   AssistantHealth,
   AssistantMessage,
   AssistantTransport,
@@ -200,9 +202,11 @@ export class DirectHttpTransport implements AssistantTransport {
   async ask(
     dialogId: string,
     question: string,
-    onDelta?: (chunk: string) => void,
-    signal?: AbortSignal,
+    options?: AskOptionsArg,
+    legacySignal?: AbortSignal,
   ): Promise<AssistantMessage> {
+    const normalized = normalizeAskOptions(options, legacySignal)
+    const { onDelta, signal } = normalized
     if (this.active) {
       // Один активный запрос на транспорт: панель блокирует повторную отправку.
       throw new Error('Предыдущий запрос ещё выполняется')
@@ -233,7 +237,11 @@ export class DirectHttpTransport implements AssistantTransport {
       const response = await this.fetchImpl(`${this.baseUrl}/ask`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ question, dialog_id: dialogId }),
+        body: JSON.stringify({
+          question,
+          dialog_id: dialogId,
+          context: contextPayload(normalized),
+        }),
         signal: controller.signal,
       })
 

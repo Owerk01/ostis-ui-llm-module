@@ -37,6 +37,11 @@ class Settings(BaseSettings):
     # иначе клиент оборвёт запрос раньше, чем LLM успеет ответить.
     dialog_client_timeout_s: float = 35.0
     llm_max_output_tokens: int = 512
+    # Явное разделение бюджета промпта (T7): знания / история / экземпляр / вывод.
+    knowledge_token_budget: int = 3500
+    history_token_budget: int = 800
+    instance_token_budget: int = 1500
+    output_reserve_tokens: int = 512
 
     # --- Обработка запросов диалога (B0-1) ---
     dialog_worker_threads: int = 1
@@ -75,11 +80,23 @@ class Settings(BaseSettings):
         return self.llm_backend == "ollama"
 
     @model_validator(mode="after")
-    def _validate_dialog_client_timeout(self) -> "Settings":
+    def _validate_timeouts_and_budgets(self) -> "Settings":
         if self.dialog_client_timeout_s <= self.llm_timeout_s:
             raise ValueError(
                 "DIALOG_CLIENT_TIMEOUT_S должен быть строго больше LLM_TIMEOUT_S: "
                 f"{self.dialog_client_timeout_s} <= {self.llm_timeout_s}. "
                 "Клиент должен ждать дольше, чем генерирует LLM."
+            )
+        budgets = (
+            self.knowledge_token_budget
+            + self.history_token_budget
+            + self.instance_token_budget
+            + self.output_reserve_tokens
+        )
+        if budgets > self.llm_num_ctx:
+            raise ValueError(
+                "Сумма бюджетов промпта превышает LLM_NUM_CTX: "
+                f"{budgets} > {self.llm_num_ctx}. Уменьшите бюджет экземпляра, "
+                "а не переполняйте контекст молча."
             )
         return self

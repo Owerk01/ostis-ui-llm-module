@@ -23,6 +23,17 @@
     "agent_restarted",
     "internal"
   ],
+  "context": {
+    "class": "concept_ui_dialog_context",
+    "argument": "rrel_3",
+    "relations": [
+      "nrel_ui_context_mode",
+      "nrel_ui_context_interface",
+      "nrel_ui_context_component"
+    ],
+    "traceRelation": "nrel_ui_dialog_context",
+    "modes": ["none", "selection", "whole"]
+  },
   "transportErrors": {
     "timeout": "assistant_timeout",
     "cancelled": "assistant_cancelled",

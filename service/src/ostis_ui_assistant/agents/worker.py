@@ -11,7 +11,7 @@ import logging
 import queue
 import threading
 from dataclasses import dataclass
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 from sc_client.models import ScAddr
 from sc_kpm import ScKeynodes
@@ -19,6 +19,7 @@ from sc_kpm.utils.action_utils import finish_action_with_status
 
 from ..config import Settings
 from ..knowledge.identifiers import PROPERTY_KEYS
+from ..knowledge.instance import InstanceContext, read_context
 from ..knowledge.service import Cancelled, KnowledgeService
 from ..llm.base import LLMTimeout, LLMUnavailable
 from ..sc import dialog_store
@@ -44,6 +45,8 @@ class DialogJob:
     dialog: ScAddr
     question: str
     message: ScAddr
+    # rrel_3: узел контекста. Читается воркером, не в потоке событий sc-machine.
+    context: Any = None
 
 
 class DialogWorker:
@@ -130,9 +133,21 @@ class DialogWorker:
         if dialog_store.is_action_finished(job.action):
             logger.info("Действие %s уже завершено, пропускаю", job.action.value)
             return
+        instance: InstanceContext | None = None
+        if job.context is not None:
+            try:
+                # Только чтение: шаблоны не создают узлы и связей в БЗ.
+                instance = read_context(job.context)
+            except Exception as exc:  # noqa: BLE001 - контекст не должен ронять ответ
+                logger.warning("Не удалось прочитать контекст rrel_3: %s", exc)
         try:
             # При корректной остановке сервиса `_stop` мягко прерывает генерацию.
-            result = self._service.answer(job.question, cancel_event=self._stop)
+            if instance is None:
+                result = self._service.answer(job.question, cancel_event=self._stop)
+            else:
+                result = self._service.answer(
+                    job.question, cancel_event=self._stop, context=instance
+                )
         except Cancelled:
             dialog_store.complete_assistant_message(
                 job.message,
@@ -165,6 +180,12 @@ class DialogWorker:
             return
 
         source_addrs = [addr for addr in self._source_addrs(result.sources) if addr.is_valid()]
+        if instance is not None:
+            seen = {addr.value for addr in source_addrs}
+            for addr in instance.source_addrs:
+                if addr.is_valid() and addr.value not in seen:
+                    seen.add(addr.value)
+                    source_addrs.append(addr)
         dialog_store.complete_assistant_message(
             job.message,
             result.text,

@@ -152,8 +152,19 @@ def _append_message(
     return message
 
 
-def append_user_message(dialog: ScAddr, text: str) -> ScAddr:
-    return _append_message(dialog, text, "concept_ui_user_message", kn.STATUS_DONE)
+def append_user_message(
+    dialog: ScAddr, text: str, *, context: ScAddr | None = None
+) -> ScAddr:
+    """Пользовательское сообщение; контекст из rrel_3 связывается для трассировки."""
+    message = _append_message(dialog, text, "concept_ui_user_message", kn.STATUS_DONE)
+    if context is not None and context.is_valid():
+        generate_binary_relation(
+            sc_type.CONST_COMMON_ARC,
+            message,
+            context,
+            ScKeynodes["nrel_ui_dialog_context"],
+        )
+    return message
 
 
 def append_assistant_message(

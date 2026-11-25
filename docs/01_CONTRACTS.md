@@ -48,7 +48,7 @@
 
 - [ ] Версия sc-machine: 0.10.0 или 0.10.5? Проверено на 0.10.5 с `py-sc-client 0.4.0`
   и `py-sc-kpm 0.4.0`.
-- [ ] Утверждение 22 новых идентификаторов (коллизий с существующими нет).
+- [ ] Утверждение 26 наших идентификаторов, включая T7 (коллизий с существующими нет).
 - [ ] Размещение `kb/ui_assistant/` в дереве ostis-example-app (у нас подключено
   через `platform/repo.path`).
 - [ ] Контракт `AssistantPanelProps` и способ встраивания (библиотечная сборка
@@ -140,6 +140,7 @@
 | Узел/дуга | Смысл |
 |---|---|
 | `concept_ui_dialog` | диалог разработчика со средой |
+| `concept_ui_dialog_context` | контекст запроса (rrel_3): режим и ссылки на экземпляр интерфейса |
 | `concept_ui_user_message` / `concept_ui_assistant_message` | сообщения (⊂ `concept_ui_dialog_message`) |
 | `nrel_ui_dialog_message` + `rrel_1..N` | диалог → сообщение, порядок в `rrel` |
 | `nrel_ui_value` (существующее) | текст сообщения в sc-link |
@@ -150,6 +151,10 @@
 | `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `<версия промпта>\|pack:<ISO>` (сейчас `v4`) |
 | `nrel_ui_answer_source` | ответ → узел-основание |
 | `nrel_ui_knowledge_source` (существующее) | ответ → sc-link `kb` / `fallback` / `unknown` |
+| `nrel_ui_dialog_context` (существующее) | user-сообщение → узел контекста запроса (T7, только режим не `none`) |
+| `nrel_ui_context_mode` | контекст → sc-link `none` / `selection` / `whole` |
+| `nrel_ui_context_interface` | контекст → `concept_ui_interface` |
+| `nrel_ui_context_component` | контекст → компонент (повторяющееся, для выделения/подсказок) |
 
 Новых отношений для текста не вводится: используется существующее `nrel_ui_value`.
 Текст и состояние `pending`-сообщения обновляются на месте (`set_link_contents`),
@@ -188,7 +193,8 @@ Direct-http повторяет ту же модель: `/ask` отдаёт `code
 - Класс: `action_answer_ui_development_question` (⊂ `action`).
 - Запуск: дуга `action_initiated → action`.
 - Аргументы: `rrel_1` — sc-link с текстом вопроса; `rrel_2` — узел диалога
-  (если нет, агент создаёт новый); `rrel_3` зарезервирован и не читается.
+  (если нет, агент создаёт новый); `rrel_3` — необязательный узел
+  `concept_ui_dialog_context` (контекст экземпляра интерфейса, T7).
 - Результат: `nrel_result →` структура (`ScStructure`) с узлом
   `concept_ui_assistant_message`. Текст, состояние, код и основания читаются из
   самого сообщения. Результат создаётся **сразу при приёме запроса** (сообщение
@@ -210,6 +216,41 @@ Direct-http повторяет ту же модель: `/ask` отдаёт `code
 создаваться **perm-pos** дугой, а не common arc: иначе агент видит пустые
 аргументы, создаёт новый диалог и завершает действие как `unsuccessfully`.
 
+### Контекст экземпляра интерфейса (T7)
+
+Режим `none | selection | whole` передаётся вместе с вопросом и не меняет
+флоу без контекста. При `none` агент не читает экземпляр и не добавляет блок в
+промпт; поведение совпадает с T6.
+
+| Слой | Поле |
+|---|---|
+| sc-memory | `rrel_3` действия → `concept_ui_dialog_context` |
+| direct-http | `POST /ask` поле `context: { mode, interface_id?, component_ids? }` |
+| панель | `AskOptions.context?: DialogContextOptions` |
+
+Узел контекста:
+
+- `nrel_ui_context_mode` → sc-link `none` / `selection` / `whole`;
+- `nrel_ui_context_interface` → `concept_ui_interface`;
+- `nrel_ui_context_component` → компонент (повторяющееся);
+- `nrel_ui_dialog_context` связывает узел контекста с user-сообщением (след в истории).
+
+Read-путь читает экземпляр только через `ScKeynodes.get()` и
+`search_by_template`/`search_links_by_contents`: `ScKeynodes.resolve`,
+`generate_*`, `create_*` запрещены. Агент получает `interface_id`, состав по
+`nrel_ui_has_component`, вложенность по `nrel_ui_contains`, связи по
+`nrel_ui_input_target`/`nrel_ui_output_target`, свойства по `concept_ui_<key>` +
+`nrel_ui_value`, id компонентов по `nrel_ui_id`.
+
+Блок `ЭКЗЕМПЛЯР` добавляется отдельным system-сообщением только когда
+`mode != none`. Формат компактный построчный; бюджет экземпляра 1500 токенов,
+истории 800, знания 3500, резерв вывода 512, сумма 6312 < `LLM_NUM_CTX=8192`.
+При усечении добавляется
+`[модель интерфейса усечена: показано N из M компонентов]`; приоритет:
+выделенные → соседи по связям → остальные. В лог пишутся фактические
+`prompt_tokens`, `instance_tokens`, `instance_components_shown/total`,
+`instance_truncated`; `near_context_limit` предупреждает при >80% `LLM_NUM_CTX`.
+
 ### Транспорт панели
 
 `panel/src/transport/scMemory.ts` (`ScMemoryTransport`):
@@ -220,9 +261,12 @@ Direct-http повторяет ту же модель: `/ask` отдаёт `code
    существующий (по `nrel_ui_id`) и возвращает его; невалидный/ненайденный id —
    типизированная ошибка `DialogNotFoundError` (`dialog_not_found`), новый
    диалог не создаётся молча.
-2. `ask(dialogId, …)` создаёт действие, `rrel_1` (текст), `rrel_2` (диалог),
-   затем `action_initiated`; при неизвестном id диалога — типизированная ошибка
-   `DialogNotFoundError` (`dialog_not_found`), диалог не подменяется.
+2. `ask(dialogId, question, options?)` создаёт действие: `rrel_1` — текст,
+   `rrel_2` — диалог, `rrel_3` — узел `concept_ui_dialog_context`, если
+   `options.context.mode !== 'none'`. При неизвестном id диалога — типизированная
+   ошибка `DialogNotFoundError` (`dialog_not_found`), диалог не подменяется.
+   Плоская форма `ask(dialogId, question, onDelta?, signal?)` сохраняется для
+   совместимости.
 3. Ожидание — подписка `AfterGenerateIncomingArc` на узел действия плюс
    опрос `action_finished` каждые 400 мс; клиентский таймаут 35 с из
    `DIALOG_CLIENT_TIMEOUT_S` / `VITE_DIALOG_CLIENT_TIMEOUT_S` (не хардкодится).
@@ -233,6 +277,13 @@ Direct-http повторяет ту же модель: `/ask` отдаёт `code
    появится в истории.
 6. Стриминга нет: `onDelta` вызывается один раз с полным текстом после записи
    в БЗ.
+7. Контекст T7: `AskOptions.context = { mode: 'none' | 'selection' | 'whole',
+   interfaceId?, componentIds? }`. Панель передаёт только выбор пользователя;
+   агент читает экземпляр из sc-памяти на чтение через `ScKeynodes.get()` и
+   `search_by_template`, не создавая узлы/связи. При `mode=selection` в промпт
+   попадают выделенные компоненты; при `mode=whole` добавляются соседи по
+   `nrel_ui_input_target`/`nrel_ui_output_target`/`nrel_ui_contains`.
+   `mode=none` не добавляет блок экземпляра и не меняет поведение промпта.
 7. Исходы ожидания — типизированные ошибки вместо строковых: `AssistantTimeout`
    (с `actionId` и `dialogId`), `AssistantCancelled`, `AssistantSchemaMissing`,
    `AssistantDialogNotFound`, `AssistantBusy`. Их коды зафиксированы в
@@ -417,6 +468,10 @@ Dev и holdout публикуются раздельно; warm/cold latency за
   показывает обе величины и число предупреждений.
 
 ## Известные ограничения
+
+- `mode=whole` при больших интерфейсах ограничен бюджетом 1500 токенов на блок
+  экземпляра; полный интерфейс не передаётся. Приоритет: выделенные компоненты,
+  затем соседи по связям, затем остальные. Усекаемый хвост помечается маркером.
 
 | Ограничение | Причина | План |
 |---|---|---|

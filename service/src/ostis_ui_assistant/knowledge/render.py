@@ -12,13 +12,31 @@ import math
 import re
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from .validate import find_unknown
 
+if TYPE_CHECKING:
+    from .instance import InstanceContext
+
 logger = logging.getLogger(__name__)
 
+# Явное разделение бюджета контекста: знания, история, экземпляр и резерв вывода.
+# Сумма 3500 + 800 + 1500 + 512 = 6312 укладывается в LLM_NUM_CTX=8192.
 TOKEN_BUDGET = 3500
+HISTORY_TOKEN_BUDGET = 800
+INSTANCE_TOKEN_BUDGET = 1500
+OUTPUT_RESERVE_TOKENS = 512
+
+INSTANCE_INSTRUCTION = (
+    "Блок ЭКЗЕМПЛЯР ниже — данные конкретного интерфейса из sc-памяти, а не каталог.\n"
+    "Правило 10 рабочего промпта о неподдержке вопросов по конкретному интерфейсу "
+    "здесь не действует: отвечай по этому блоку, называя реальные idtf "
+    "компонентов, их свойства и связи. Идентификаторы экземпляра из блока не считаются "
+    "выдуманными. Интерфейс не изменяешь.\n"
+    "ЭКЗЕМПЛЯР"
+)
+TRUNCATION_MARKER = "[модель интерфейса усечена: показано {shown} из {total} компонентов]"
 PROPERTY_ORDER = [
     "name",
     "x",
@@ -244,11 +262,139 @@ class PromptBuildResult:
     knowledge_tokens: int
     system_tokens: int
     truncated_sections: list[str] = field(default_factory=list)
+    instance_text: str = ""
+    instance_tokens: int = 0
+    instance_shown: int = 0
+    instance_total: int = 0
+    instance_truncated: bool = False
+    history_tokens: int = 0
+
+
+@dataclass
+class InstanceRenderResult:
+    text: str
+    tokens: int
+    shown: int
+    total: int
+    truncated: bool = False
 
 
 def estimate_tokens(text: str) -> int:
     """Оценка для русского текста: len/3, округление вверх."""
     return math.ceil(len(text) / 3)
+
+
+INPUT_RELATION = "nrel_ui_input_target"
+OUTPUT_RELATION = "nrel_ui_output_target"
+CONTAINS_RELATION = "nrel_ui_contains"
+
+
+def _component_line(component: Any) -> str:
+    parts = [component.idtf, component.sc_class or "concept_ui_object"]
+    properties = component.properties
+    keys = [key for key in PROPERTY_ORDER if key in properties]
+    keys.extend(sorted(key for key in properties if key not in PROPERTY_ORDER))
+    parts.extend(f"{key}={properties[key]}" for key in keys)
+    return " | ".join(parts)
+
+
+def _relation_lines(component: Any) -> list[str]:
+    result: list[str] = []
+    for relation, targets in (
+        (INPUT_RELATION, component.inputs),
+        (OUTPUT_RELATION, component.outputs),
+        (CONTAINS_RELATION, component.children),
+    ):
+        if targets:
+            result.append(f"связи: {component.idtf} -{relation}-> {', '.join(targets)}")
+    return result
+
+
+def _ordered_components(context: "InstanceContext") -> list[Any]:
+    """Выделенные → их соседи → остальные; в `selection` только выделенные."""
+    components = context.components
+    by_id = {item.idtf: item for item in components}
+    if context.mode == "selection":
+        return [by_id[item_id] for item_id in context.selected_ids if item_id in by_id]
+
+    selected = [by_id[item_id] for item_id in context.selected_ids if item_id in by_id]
+    neighbor_ids: set[str] = set()
+    for component in selected:
+        neighbor_ids.update(component.inputs)
+        neighbor_ids.update(component.outputs)
+        neighbor_ids.update(component.children)
+    neighbors = [by_id[item_id] for item_id in neighbor_ids if item_id in by_id]
+    selected_ids = {item.idtf for item in selected}
+    neighbor_id_set = {item.idtf for item in neighbors}
+    rest = [
+        item
+        for item in components
+        if item.idtf not in selected_ids and item.idtf not in neighbor_id_set
+    ]
+    return [*selected, *neighbors, *rest]
+
+
+def _compose_instance(
+    context: "InstanceContext",
+    components: list[Any],
+    *,
+    truncated: bool,
+) -> str:
+    lines = [
+        f"интерфейс: {context.interface_id or '—'} | режим: {context.mode} "
+        f"| компонентов: {len(context.components)}"
+    ]
+    if truncated:
+        lines.append(
+            TRUNCATION_MARKER.format(shown=len(components), total=len(context.components))
+        )
+    lines.extend(_component_line(item) for item in components)
+    for item in components:
+        lines.extend(_relation_lines(item))
+    return "\n".join(lines)
+
+
+def render_instance(
+    context: "InstanceContext",
+    budget: int = INSTANCE_TOKEN_BUDGET,
+) -> InstanceRenderResult:
+    """Компактная сериализация экземпляра с явным усечением по бюджету."""
+    if context.mode == "none" or not context.interface_id:
+        return InstanceRenderResult(text="", tokens=0, shown=0, total=0)
+
+    ordered = _ordered_components(context)
+    if not ordered:
+        text = _compose_instance(context, [], truncated=False)
+        return InstanceRenderResult(text, estimate_tokens(text), 0, len(context.components))
+
+    for shown in range(len(ordered), 0, -1):
+        text = _compose_instance(context, ordered[:shown], truncated=shown < len(ordered))
+        if estimate_tokens(text) <= budget:
+            return InstanceRenderResult(text, estimate_tokens(text), shown, len(context.components), shown < len(ordered))
+
+    text = _compose_instance(context, [], truncated=True)
+    logger.warning(
+        "Экземпляр интерфейса %s не уложился в бюджет %s токенов",
+        context.interface_id,
+        budget,
+    )
+    return InstanceRenderResult(text, estimate_tokens(text), 0, len(context.components), True)
+
+
+def fit_history(
+    history: list[dict[str, str]],
+    budget: int = HISTORY_TOKEN_BUDGET,
+) -> tuple[list[dict[str, str]], int]:
+    """Берём столько последних сообщений, сколько влезает в бюджет истории."""
+    kept: list[dict[str, str]] = []
+    tokens = 0
+    for message in reversed(history):
+        size = estimate_tokens(str(message.get("content", "")))
+        if tokens + size > budget:
+            break
+        kept.insert(0, message)
+        tokens += size
+    return kept, tokens
 
 
 def load_pack(path: Path) -> dict[str, Any]:
@@ -508,11 +654,40 @@ def build_messages(
     *,
     budget: int = TOKEN_BUDGET,
     include_few_shot: bool = True,
+    context: "InstanceContext | None" = None,
+    instance_budget: int = INSTANCE_TOKEN_BUDGET,
+    history: list[dict[str, str]] | None = None,
+    history_budget: int = HISTORY_TOKEN_BUDGET,
 ) -> PromptBuildResult:
     result = build_prompt(pack, template, budget=budget)
     messages: list[dict[str, str]] = [{"role": "system", "content": result.system_prompt}]
+
+    # Блок экземпляра добавляется отдельным сообщением только при не-none режиме.
+    # Так режим none остаётся побайтово совместимым с замороженным промптом.
+    if context is not None and context.mode != "none":
+        instance = render_instance(context, budget=instance_budget)
+        if instance.text:
+            messages.append(
+                {"role": "system", "content": f"{INSTANCE_INSTRUCTION}\n\n{instance.text}"}
+            )
+            result.instance_text = instance.text
+            result.instance_tokens = instance.tokens
+            result.instance_shown = instance.shown
+            result.instance_total = instance.total
+            result.instance_truncated = instance.truncated
+            if instance.truncated:
+                logger.warning(
+                    "Экземпляр усечён: показано %s из %s компонентов (%s токенов)",
+                    instance.shown,
+                    instance.total,
+                    instance.tokens,
+                )
+
     if include_few_shot:
         messages.extend(FEW_SHOT)
+    if history:
+        trimmed, result.history_tokens = fit_history(history, budget=history_budget)
+        messages.extend(trimmed)
     messages.append({"role": "user", "content": sanitize_question(question)})
     result.messages = messages
     return result

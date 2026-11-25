@@ -12,6 +12,7 @@ import type {
   AssistantHealth,
   AssistantMessage,
   AssistantTransport,
+  DialogContextOptions,
   SourceRef,
 } from './transport/types'
 
@@ -21,8 +22,9 @@ export interface AssistantPanelProps {
   title?: string // по умолчанию «Ассистент разработчика ПИ»
   className?: string
   onSourceClick?: (ref: SourceRef) => void // редактор подсветит узел
+  /** Контекст выбранного интерфейса/компонентов; без него режим `none`. */
+  context?: DialogContextOptions
   // --- ЗАРЕЗЕРВИРОВАНО, не реализовано ---
-  // contextSelection?: ContextSelection
   // onContextChange?: (c: ContextSelection) => void
   // onProposedChange?: (p: ProposedChange) => void
 }
@@ -50,6 +52,7 @@ export function AssistantPanel({
   title = DEFAULT_TITLE,
   className,
   onSourceClick,
+  context,
 }: AssistantPanelProps) {
   const [messages, setMessages] = useState<AssistantMessage[]>([])
   const [dialogId, setDialogId] = useState<string | null>(dialogIdProp ?? null)
@@ -153,10 +156,9 @@ export function AssistantPanel({
       setNow(started)
 
       try {
-        const answer = await transport.ask(
-          dialogId,
-          text,
-          (chunk) => {
+        const answer = await transport.ask(dialogId, text, {
+          context,
+          onDelta: (chunk) => {
             setMessages((previous) =>
               previous.map((message) =>
                 message.id === pendingLocalId
@@ -165,7 +167,7 @@ export function AssistantPanel({
               ),
             )
           },
-        )
+        })
 
         setMessages((previous) =>
           previous.map((message) => {
@@ -247,7 +249,7 @@ export function AssistantPanel({
         }
       }
     },
-    [dialogId, refreshHealth, transport],
+    [context, dialogId, refreshHealth, transport],
   )
 
   const send = useCallback((question: string) => void run(question, true), [run])

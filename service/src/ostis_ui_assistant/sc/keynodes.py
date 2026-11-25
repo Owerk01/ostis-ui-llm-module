@@ -15,6 +15,7 @@ KEYNODES: dict[str, int] = {
     "concept_ui_development_stage": sc_type.CONST_NODE_CLASS,
     "concept_ui_environment_note": sc_type.CONST_NODE_CLASS,
     "concept_ui_dialog_service": sc_type.CONST_NODE_CLASS,
+    "concept_ui_dialog_context": sc_type.CONST_NODE_CLASS,
     "action_answer_ui_development_question": sc_type.CONST_NODE_CLASS,
     "nrel_ui_dialog_message": sc_type.CONST_NODE_NON_ROLE,
     "nrel_ui_message_time": sc_type.CONST_NODE_NON_ROLE,
@@ -28,6 +29,9 @@ KEYNODES: dict[str, int] = {
     "nrel_ui_service_heartbeat": sc_type.CONST_NODE_NON_ROLE,
     "nrel_ui_service_state": sc_type.CONST_NODE_NON_ROLE,
     "nrel_ui_message_code": sc_type.CONST_NODE_NON_ROLE,
+    "nrel_ui_context_mode": sc_type.CONST_NODE_NON_ROLE,
+    "nrel_ui_context_interface": sc_type.CONST_NODE_NON_ROLE,
+    "nrel_ui_context_component": sc_type.CONST_NODE_NON_ROLE,
     "nrel_ui_value": sc_type.CONST_NODE_NON_ROLE,
     "nrel_main_idtf": sc_type.CONST_NODE_NON_ROLE,
 }

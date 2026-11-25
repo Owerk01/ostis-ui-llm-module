@@ -2,6 +2,29 @@
 
 ## Unreleased
 
+### T7: контекст экземпляра интерфейса в запросе
+
+- `action_answer_ui_development_question` принимает `rrel_3` — узел
+  `concept_ui_dialog_context` с `nrel_ui_context_mode` (`none|selection|whole`),
+  `nrel_ui_context_interface` и повторяющимся `nrel_ui_context_component`;
+  user-сообщение связывается с контекстом через `nrel_ui_dialog_context`.
+- Транспорт панели принимает `ask(dialogId, question, options?)`, где
+  `options.context` задаёт режим/интерфейс/компоненты; плоские
+  `onDelta`/`signal` сохранены для совместимости. Direct-http принимает
+  `context` в `/ask`.
+- Агент читает экземпляр только на чтение (`ScKeynodes.get`, шаблоны поиска):
+  интерфейс по `nrel_ui_id`, состав по `nrel_ui_has_component`, вложенность по
+  `nrel_ui_contains`, связи по `nrel_ui_input_target`/`nrel_ui_output_target`,
+  свойства по `concept_ui_<key>` + `nrel_ui_value`.
+- Блок `ЭКЗЕМПЛЯР` добавляется отдельным system-сообщением только при
+  `mode != none`; `prompt_v4.md` и gold-заморозка не менялись. Бюджеты: знания
+  3500, история 800, экземпляр 1500, резерв вывода 512; усечение помечается
+  `[модель интерфейса усечена: показано N из M компонентов]`.
+- Тесты: чтение экземпляра без `generate_*`, формат/усечение 200 компонентов,
+  приоритет selection, none-регрессия промпта, прокидывание контекста через
+  агент/воркер/direct-http и нормализация AskOptions в панели.
+
+
 ### T6: типизированные исходы ожидания и дочитка позднего результата
 
 - Введены `AssistantTimeout` (с `actionId`/`dialogId`), `AssistantCancelled`,

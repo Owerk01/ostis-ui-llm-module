@@ -19,6 +19,9 @@ export {
 } from './transport/errors.ts'
 export { DialogNotFoundError, DIALOG_NOT_FOUND_ERROR } from './transport/types'
 export type {
+  AskOptions,
+  DialogContextMode,
+  DialogContextOptions,
   AssistantHealth,
   AssistantMessage,
   AssistantRole,

@@ -42,6 +42,24 @@ export interface AssistantMessage {
   scAddr?: number
 }
 
+export type DialogContextMode = 'none' | 'selection' | 'whole'
+
+/** Контекст экземпляра интерфейса (rrel_3 в sc-memory, `context` в /ask). */
+export interface DialogContextOptions {
+  mode: DialogContextMode
+  interfaceId?: string
+  componentIds?: string[]
+}
+
+export interface AskOptions {
+  context?: DialogContextOptions
+  onDelta?: (chunk: string) => void
+  signal?: AbortSignal
+}
+
+/** Плоская форма вызова сохраняется для совместимости с редактором. */
+export type AskOptionsArg = AskOptions | ((chunk: string) => void) | undefined
+
 export interface AssistantHealth {
   llm: { backend: string; model: string | null; reachable: boolean }
   kb: { connected: boolean; knowledgeSource: KnowledgeSource; packVersion: string }
@@ -69,10 +87,14 @@ export interface AssistantTransport {
    */
   ensureDialog(dialogId?: string): Promise<string>
   history(dialogId: string): Promise<AssistantMessage[]>
+  /**
+   * `options.context` включает чтение экземпляра; плоские `onDelta`/`signal`
+   * принимаются как третий/четвёртый аргумент ради обратной совместимости.
+   */
   ask(
     dialogId: string,
     question: string,
-    onDelta?: (chunk: string) => void,
+    options?: AskOptionsArg,
     signal?: AbortSignal,
   ): Promise<AssistantMessage>
   cancel(messageId: string): Promise<void>

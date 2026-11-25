@@ -53,6 +53,29 @@ EXISTING_CLASSES = {
     "concept_ui_max_height",
 }
 
+# 16 типов компонентов редактора. Используется только для чтения экземпляра:
+# class-узел ищется через ScKeynodes.get(), ничего не создаётся.
+COMPONENT_CLASSES = {
+    "concept_ui_interface",
+    "concept_ui_object",
+    "concept_ui_image",
+    "concept_ui_sound",
+    "concept_ui_text",
+    "concept_ui_divider",
+    "concept_ui_spacer",
+    "concept_ui_menu",
+    "concept_ui_menu_bar",
+    "concept_ui_list",
+    "concept_ui_scroll",
+    "concept_ui_window",
+    "concept_ui_text_field",
+    "concept_ui_text_area",
+    "concept_ui_slider",
+    "concept_ui_select",
+    "concept_ui_button",
+    "concept_ui_menu_item",
+}
+
 EXISTING_RELATIONS = {
     "nrel_inclusion",
     "nrel_ui_contains",
@@ -76,6 +99,8 @@ NEW_CLASSES = {
     "concept_ui_environment_note",
     # B0-2/B0-5: единственный узел состояния сервиса диалога (аренда экземпляра).
     "concept_ui_dialog_service",
+    # T7: узел контекста запроса (аргумент rrel_3 действия).
+    "concept_ui_dialog_context",
 }
 
 NEW_RELATIONS = {
@@ -92,6 +117,10 @@ NEW_RELATIONS = {
     "nrel_ui_service_heartbeat",
     "nrel_ui_service_state",
     "nrel_ui_message_code",
+    # T7: режим контекста, интерфейс и выбранные компоненты.
+    "nrel_ui_context_mode",
+    "nrel_ui_context_interface",
+    "nrel_ui_context_component",
 }
 
 NEW_ACTIONS = {

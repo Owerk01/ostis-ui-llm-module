@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import logging
 from contextlib import asynccontextmanager
-from typing import Iterator
+from typing import Iterator, Literal
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..config import Settings
+from ..knowledge.instance import InstanceContext, read_interface
 from ..knowledge.service import Cancelled, KnowledgeService
 from ..llm.base import LLMTimeout, LLMUnavailable
 from ..sc.outcomes import PENDING_CODE
@@ -25,9 +26,16 @@ from .sse import (
 logger = logging.getLogger(__name__)
 
 
+class ContextRequest(BaseModel):
+    mode: Literal["none", "selection", "whole"] = "none"
+    interface_id: str | None = None
+    component_ids: list[str] = Field(default_factory=list)
+
+
 class AskRequest(BaseModel):
     question: str = Field(min_length=1)
     dialog_id: str | None = None
+    context: ContextRequest | None = None
 
 
 class CancelRequest(BaseModel):
@@ -120,6 +128,17 @@ def create_app(
         assistant = dialogs.add_assistant_pending(dialog_id)
         cancel_event = cancels.create(assistant.id)
 
+        context: InstanceContext | None = None
+        if request.context and request.context.mode != "none":
+            if not request.context.interface_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail={"code": "invalid_request", "error": "Не указан интерфейс контекста"},
+                )
+            context = read_interface(
+                request.context.interface_id, request.context.component_ids
+            )
+
         def generate() -> Iterator[str]:
             yield sse_event(
                 "meta",
@@ -131,7 +150,10 @@ def create_app(
                 },
             )
             try:
-                result = knowledge.answer(question, cancel_event)
+                if context is None:
+                    result = knowledge.answer(question, cancel_event)
+                else:
+                    result = knowledge.answer(question, cancel_event, context=context)
                 dialogs.update_assistant(
                     dialog_id,
                     assistant.id,

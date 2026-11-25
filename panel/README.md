@@ -78,9 +78,10 @@ websocket не открывается. Остальной код панели к
 - `ensureDialog(dialogId?)` вызывается один раз при монтировании: с переданным
   `dialogId` — открыть существующий, без — создать новый; неизвестный id бросает
   `DialogNotFoundError`;
-- `ask()` может вызывать `onDelta` много раз, а завершиться сообщением в состоянии
-  `done`, `cancelled` или отклониться с ошибкой; при неизвестном диалоге — ошибка
-  `dialog_not_found`, без подмены диалога;
+- `ask(dialogId, question, options?)` принимает `options.context` и плоские
+  `onDelta`/`signal` для совместимости; может вызывать `onDelta` много раз, а
+  завершиться сообщением `done`/`cancelled` или ошибкой; при неизвестном
+  диалоге — `dialog_not_found`, без подмены диалога;
 - `cancel(messageId)` получает локальный id сообщения панели. Транспорт сам
   сопоставляет его со своим запросом; после отмены `ask()` должен разрешиться
   сообщением `cancelled`, а не падать.
@@ -94,9 +95,9 @@ websocket не открывается. Остальной код панели к
 | `title` | `string?` | заголовок, по умолчанию «Ассистент разработчика ПИ» |
 | `className` | `string?` | дополнительный класс на корень |
 | `onSourceClick` | `(ref: SourceRef) => void` | клик по чипу основания |
+| `context` | `DialogContextOptions?` | контекст экземпляра: `none`/`selection`/`whole`, `interfaceId`, `componentIds` |
 
-Поля `contextSelection`, `onContextChange`, `onProposedChange`
-зарезервированы в типе и не реализованы.
+Поля `onContextChange`, `onProposedChange` зарезервированы и не реализованы.
 
 ## Изоляция стилей
 

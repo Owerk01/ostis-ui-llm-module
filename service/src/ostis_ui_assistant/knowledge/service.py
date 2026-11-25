@@ -15,6 +15,7 @@ from ..config import Settings
 from ..llm.base import LLMBackend, LLMError, LLMStats, LLMTimeout, create_backend
 from ..sc.service_state import CONTRACT_VERSION, STATE_STARTING, lease_is_live
 from .identifiers import ALL_IDENTIFIERS, ENVIRONMENT_IDENTIFIERS, PROPERTY_KEYS
+from .instance import InstanceContext
 from .kb_reader import KbStatus, close as close_kb, load_pack_from_kb
 from .tokens import near_context_limit
 from .render import (
@@ -62,6 +63,10 @@ class AnswerResult:
     unknown_in_final: list[str] = field(default_factory=list)
     knowledge_source: str = "fallback"
     guard: str = ""
+    instance_tokens: int = 0
+    instance_shown: int = 0
+    instance_total: int = 0
+    instance_truncated: bool = False
 
 
 class KnowledgeService:
@@ -181,7 +186,12 @@ class KnowledgeService:
             pieces.append(piece)
         return "".join(pieces).strip()
 
-    def answer(self, question: str, cancel_event: threading.Event | None = None) -> AnswerResult:
+    def answer(
+        self,
+        question: str,
+        cancel_event: threading.Event | None = None,
+        context: InstanceContext | None = None,
+    ) -> AnswerResult:
         question = question.strip()
         if not question:
             raise ValueError("Пустой запрос")
@@ -206,7 +216,15 @@ class KnowledgeService:
                 self._write_log(question, result, built)
                 return result
 
-        built = build_messages(prompt_question, self.pack, self.template)
+        built = build_messages(
+            prompt_question,
+            self.pack,
+            self.template,
+            budget=self.settings.knowledge_token_budget,
+            context=context,
+            instance_budget=self.settings.instance_token_budget,
+            history_budget=self.settings.history_token_budget,
+        )
         started = time.perf_counter()
         deadline = started + self.settings.llm_timeout_s
         chunks: list[str] = []
@@ -263,6 +281,10 @@ class KnowledgeService:
             unknown_in_final=find_unknown(validation.text),
             knowledge_source=self.knowledge_source,
             guard=guard,
+            instance_tokens=built.instance_tokens,
+            instance_shown=built.instance_shown,
+            instance_total=built.instance_total,
+            instance_truncated=built.instance_truncated,
         )
         self._write_log(question, result, built)
         return result
@@ -285,6 +307,10 @@ class KnowledgeService:
             "validation_removed": result.validation_removed,
             "knowledge_source": result.knowledge_source,
             "prompt_estimated_tokens": built.system_tokens,
+            "instance_tokens": result.instance_tokens,
+            "instance_components_shown": result.instance_shown,
+            "instance_components_total": result.instance_total,
+            "instance_truncated": result.instance_truncated,
             "guard": result.guard,
         }
         path: Path = self.settings.dialog_log_path
@@ -364,6 +390,12 @@ class KnowledgeService:
             "timeouts": {
                 "llmTimeoutS": self.settings.llm_timeout_s,
                 "dialogClientTimeoutS": self.settings.dialog_client_timeout_s,
+            },
+            "tokenBudgets": {
+                "knowledge": self.settings.knowledge_token_budget,
+                "history": self.settings.history_token_budget,
+                "instance": self.settings.instance_token_budget,
+                "outputReserve": self.settings.output_reserve_tokens,
             },
         }
 

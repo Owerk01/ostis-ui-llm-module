@@ -72,7 +72,7 @@ class UiDialogAgent(ScAgentClassic):
                     action.value,
                 )
 
-            args = get_action_arguments(action, 2)
+            args = get_action_arguments(action, 3)
             question_link = args[0] if args else None
             question = ""
             if question_link is not None and question_link.is_valid():
@@ -82,6 +82,7 @@ class UiDialogAgent(ScAgentClassic):
             dialog = dialog_store.ensure_dialog(
                 dialog_arg if dialog_arg and dialog_arg.is_valid() else None
             )
+            context = args[2] if len(args) > 2 else None
 
             if not question:
                 message = dialog_store.append_error_message(
@@ -94,7 +95,11 @@ class UiDialogAgent(ScAgentClassic):
             # Если результат уже есть (битое состояние), пользовательское
             # сообщение могло быть записано раньше — не дублируем его.
             if not result.is_valid():
-                dialog_store.append_user_message(dialog, question)
+                # rrel_3 → пользовательское сообщение: след контекста в истории.
+                if context is not None and context.is_valid():
+                    dialog_store.append_user_message(dialog, question, context=context)
+                else:
+                    dialog_store.append_user_message(dialog, question)
             message = dialog_store.append_assistant_message(
                 dialog,
                 "",
@@ -113,6 +118,7 @@ class UiDialogAgent(ScAgentClassic):
                 dialog=dialog,
                 question=question,
                 message=message,
+                context=context if context is not None and context.is_valid() else None,
             )
             if not self._worker.submit(job):
                 logger.warning("Очередь запросов переполнена, действие %s: busy", action.value)

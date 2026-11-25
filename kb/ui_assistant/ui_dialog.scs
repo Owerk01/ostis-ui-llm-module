@@ -20,6 +20,13 @@ concept_ui_knowledge => nrel_inclusion: concept_ui_environment_note;;
 // экземпляра и как источник heartbeat/health для панели (B0-2/B0-5).
 concept_ui_dialog_service <- sc_node_class;;
 
+// T7: контекст запроса (rrel_3). Режим хранится в sc-link, интерфейс и
+// выбранные компоненты — отношениями от узла контекста.
+concept_ui_dialog_context <- sc_node_class;;
+nrel_ui_context_mode <- sc_node_norole_relation;;
+nrel_ui_context_interface <- sc_node_norole_relation;;
+nrel_ui_context_component <- sc_node_norole_relation;;
+
 action_answer_ui_development_question <- sc_node_class;;
 
 nrel_ui_dialog_message <- sc_node_norole_relation;;

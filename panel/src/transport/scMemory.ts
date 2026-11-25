@@ -22,6 +22,7 @@ import {
   ScType,
 } from 'ts-sc-client'
 
+import { normalizeAskOptions } from './askOptions.ts'
 import { resolveClientTimeoutMs } from './timeout.ts'
 import { AssistantBusy, AssistantSchemaMissing } from './errors.ts'
 import { LateResult } from './lateResult.ts'
@@ -32,10 +33,12 @@ import { isStableDialogId, newDialogId } from './dialogId'
 import { DialogNotFoundError } from './types'
 import { healthFromMessages } from './health'
 import type {
+  AskOptionsArg,
   AssistantHealth,
   AssistantMessage,
   AssistantTransport,
   KnowledgeSource,
+  DialogContextOptions,
   MessageState,
   SourceRef,
 } from './types'
@@ -73,6 +76,11 @@ interface Keynodes {
   actionFinished: ScAddr
   rrel1: ScAddr
   rrel2: ScAddr
+  rrel3: ScAddr | null
+  contextClass: ScAddr | null
+  nrelContextMode: ScAddr | null
+  nrelContextInterface: ScAddr | null
+  nrelContextComponent: ScAddr | null
   nrelDialogMessage: ScAddr
   nrelValue: ScAddr
   nrelTime: ScAddr
@@ -203,9 +211,10 @@ export class ScMemoryTransport implements AssistantTransport {
   async ask(
     dialogId: string,
     question: string,
-    onDelta?: (chunk: string) => void,
-    signal?: AbortSignal,
+    options?: AskOptionsArg,
+    legacySignal?: AbortSignal,
   ): Promise<AssistantMessage> {
+    const { onDelta, signal, context } = normalizeAskOptions(options, legacySignal)
     if (this.active) throw new Error('Предыдущий запрос ещё выполняется')
 
     const k = await this.keynodes()
@@ -213,7 +222,7 @@ export class ScMemoryTransport implements AssistantTransport {
     if (!dialog) throw new DialogNotFoundError(dialogId)
     this.dialogId = dialogId
 
-    const action = await this.createAction(k, dialog, question)
+    const action = await this.createAction(k, dialog, question, context)
     const actionId = String(action.value)
     const waiter = new LateResult<AssistantMessage>({
       actionId,
@@ -302,6 +311,7 @@ export class ScMemoryTransport implements AssistantTransport {
     k: Keynodes,
     dialog: ScAddr,
     question: string,
+    context?: DialogContextOptions,
   ): Promise<ScAddr> {
     const action = await this.createNode()
     await this.instantiate(k.action, action)
@@ -310,11 +320,45 @@ export class ScMemoryTransport implements AssistantTransport {
     const questionLink = await this.createLink(question)
     await this.relateRole(action, questionLink, k.rrel1)
     await this.relateRole(action, dialog, k.rrel2)
+    if (context && context.mode !== 'none') await this.attachContext(k, action, context)
 
     const construction = new ScConstruction()
     construction.generateConnector(ScType.ConstPermPosArc, k.actionInitiated, action)
     await this.client.generateElements(construction)
     return action
+  }
+
+  /** rrel_3 → concept_ui_dialog_context; none не требует новой схемы в БЗ. */
+  private async attachContext(
+    k: Keynodes,
+    action: ScAddr,
+    context: DialogContextOptions,
+  ): Promise<void> {
+    if (
+      !k.rrel3 ||
+      !k.contextClass ||
+      !k.nrelContextMode ||
+      !k.nrelContextInterface ||
+      !k.nrelContextComponent
+    ) {
+      // Не подменять контекст молча: без схемы T7 запрос не может быть выполнен.
+      throw new Error('Схема контекста ассистента не загружена в БЗ. Выполните make kb-load')
+    }
+    const node = await this.createNode()
+    await this.instantiate(k.contextClass, node)
+    await this.relateNonRole(node, await this.createLink(context.mode), k.nrelContextMode)
+
+    if (context.interfaceId) {
+      const interfaceNode = await this.findNodeById(context.interfaceId, k)
+      if (!interfaceNode) throw new Error(`Интерфейс ${context.interfaceId} не найден в БЗ`)
+      await this.relateNonRole(node, interfaceNode, k.nrelContextInterface)
+    }
+    for (const id of context.componentIds ?? []) {
+      const component = await this.findNodeById(id, k)
+      if (!component) throw new Error(`Компонент ${id} не найден в БЗ`)
+      await this.relateNonRole(node, component, k.nrelContextComponent)
+    }
+    await this.relateRole(action, node, k.rrel3)
   }
 
   private async createNode(): Promise<ScAddr> {
@@ -456,6 +500,24 @@ export class ScMemoryTransport implements AssistantTransport {
 
   // --- служебное ---
 
+  /** Узел по nrel_ui_id; используется для интерфейса и компонентов контекста. */
+  private async findNodeById(id: string, k: Keynodes): Promise<ScAddr | null> {
+    const groups = await this.client.searchLinksByContents([id])
+    for (const link of groups.flat()) {
+      const template = new ScTemplate()
+      template.quintuple(
+        [ScType.VarNode, '_node'],
+        ScType.VarCommonArc,
+        link,
+        ScType.VarPermPosArc,
+        k.nrelUiId,
+      )
+      const rows = await this.client.searchByTemplate(template)
+      if (rows.length) return rows[0].get('_node')
+    }
+    return null
+  }
+
   private async findDialogById(id: string, k: Keynodes): Promise<ScAddr | null> {
     if (!isStableDialogId(id)) return null
     const groups = await this.client.searchLinksByContents([id])
@@ -521,10 +583,23 @@ export class ScMemoryTransport implements AssistantTransport {
       ...relations.map((id) => ({ id, type: searchOnly })),
       { id: 'rrel_1', type: searchOnly },
       { id: 'rrel_2', type: searchOnly },
+      { id: 'rrel_3', type: searchOnly },
+      { id: 'concept_ui_dialog_context', type: searchOnly },
+      { id: 'nrel_ui_context_mode', type: searchOnly },
+      { id: 'nrel_ui_context_interface', type: searchOnly },
+      { id: 'nrel_ui_context_component', type: searchOnly },
     ])
-    // Код исхода опционален в старой БЗ: без link читаем `ok` как код по умолчанию.
+    // Код исхода и контекст опциональны в старой БЗ: none работает без них.
+    const optional = new Set([
+      'nrel_ui_message_code',
+      'rrel_3',
+      'concept_ui_dialog_context',
+      'nrel_ui_context_mode',
+      'nrel_ui_context_interface',
+      'nrel_ui_context_component',
+    ])
     const missing = Object.entries(resolved)
-      .filter(([id, addr]) => !addr.isValid() && id !== 'nrel_ui_message_code')
+      .filter(([id, addr]) => !addr.isValid() && !optional.has(id))
       .map(([id]) => id)
     if (missing.length) {
       throw new AssistantSchemaMissing(missing)
@@ -540,6 +615,19 @@ export class ScMemoryTransport implements AssistantTransport {
       actionFinished: resolved.action_finished,
       rrel1: resolved.rrel_1,
       rrel2: resolved.rrel_2,
+      rrel3: resolved.rrel_3?.isValid() ? resolved.rrel_3 : null,
+      contextClass: resolved['concept_ui_dialog_context']?.isValid()
+        ? resolved['concept_ui_dialog_context']
+        : null,
+      nrelContextMode: resolved['nrel_ui_context_mode']?.isValid()
+        ? resolved['nrel_ui_context_mode']
+        : null,
+      nrelContextInterface: resolved['nrel_ui_context_interface']?.isValid()
+        ? resolved['nrel_ui_context_interface']
+        : null,
+      nrelContextComponent: resolved['nrel_ui_context_component']?.isValid()
+        ? resolved['nrel_ui_context_component']
+        : null,
       nrelDialogMessage: resolved.nrel_ui_dialog_message,
       nrelValue: resolved.nrel_ui_value,
       nrelTime: resolved.nrel_ui_message_time,
