@@ -14,6 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from .language import language_directive
 from .validate import find_unknown_by_class
 
 if TYPE_CHECKING:
@@ -660,6 +661,7 @@ def build_messages(
     instance_budget: int = INSTANCE_TOKEN_BUDGET,
     history: list[dict[str, str]] | None = None,
     history_budget: int = HISTORY_TOKEN_BUDGET,
+    language_question: str | None = None,
 ) -> PromptBuildResult:
     result = build_prompt(pack, template, budget=budget)
     messages: list[dict[str, str]] = [{"role": "system", "content": result.system_prompt}]
@@ -690,6 +692,11 @@ def build_messages(
     if history:
         trimmed, result.history_tokens = fit_history(history, budget=history_budget)
         messages.extend(trimmed)
+    # Знания и few-shot примеры на русском не должны задавать язык ответа.
+    # Для не-русского вопроса добавляем явную инструкцию прямо перед ним.
+    directive = language_directive(language_question or question)
+    if directive:
+        messages.append({"role": "system", "content": directive})
     messages.append({"role": "user", "content": sanitize_question(question)})
     result.messages = messages
     return result

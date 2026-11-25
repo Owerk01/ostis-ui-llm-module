@@ -18,6 +18,7 @@ from .history import prepare_history
 from .identifiers import ALL_IDENTIFIERS, ENVIRONMENT_IDENTIFIERS, PROPERTY_KEYS
 from .instance import InstanceContext
 from .kb_reader import KbStatus, close as close_kb, load_pack_from_kb
+from .language import contains_prompt_disclosure, refusal_text
 from .tokens import near_context_limit
 from .render import (
     PromptBuildResult,
@@ -44,13 +45,6 @@ logger = logging.getLogger(__name__)
 
 class Cancelled(Exception):
     """Генерация отменена пользователем."""
-
-
-UNKNOWN_ID_REFUSAL = (
-    "В базе знаний среды нет сведений об указанном идентификаторе: его нет в каталоге, "
-    "и я не создаю новые компоненты. Могу ответить о типах компонентов, их свойствах, "
-    "принципах разработки, методике или устройстве среды."
-)
 
 
 @dataclass
@@ -214,7 +208,8 @@ class KnowledgeService:
             f"{', '.join(unknown)}.\n\n"
             f"Исходный ответ:\n{text}\n\n"
             "Замени несуществующие идентификаторы на корректные из списка ниже "
-            "или убери их. Верни только исправленный ответ на русском, без пояснений.\n"
+            "или убери их. Верни только исправленный ответ на языке исходного, "
+            "без пояснений.\n"
             f"Разрешённые идентификаторы: {allowed}"
         )
         messages = [
@@ -257,7 +252,7 @@ class KnowledgeService:
             if len(remainder) < 3:
                 built = build_messages(question, self.pack, self.template)
                 result = AnswerResult(
-                    text=UNKNOWN_ID_REFUSAL,
+                    text=refusal_text("unknown_id", question),
                     model=self.settings.llm_model,
                     prompt_version=self.prompt_version,
                     pack_version=self.pack_version,
@@ -277,6 +272,7 @@ class KnowledgeService:
             instance_budget=self.settings.instance_token_budget,
             history=prompt_history,
             history_budget=self.settings.history_token_budget,
+            language_question=question,
         )
         started = time.perf_counter()
         deadline = started + self.settings.llm_timeout_s
@@ -302,6 +298,25 @@ class KnowledgeService:
                 self.settings.llm_num_ctx,
                 built.knowledge_tokens,
             )
+        # Утечка служебных правил не должна доходить до пользователя даже если
+        # модель нарушила правило 13 промпта.
+        if contains_prompt_disclosure(raw_text):
+            result = AnswerResult(
+                text=refusal_text("policy", question),
+                model=self.settings.llm_model,
+                prompt_version=self.prompt_version,
+                pack_version=self.pack_version,
+                prompt_tokens=stats.prompt_tokens,
+                output_tokens=stats.output_tokens,
+                latency_ms=round((time.perf_counter() - started) * 1000, 1),
+                tokens_unavailable=stats.tokens_unavailable,
+                token_budget_warning=token_warning,
+                knowledge_source=self.knowledge_source,
+                guard="policy",
+            )
+            self._write_log(question, result, built)
+            return result
+
         repair_times: list[float] = []
         allowed_instances = self._allowed_instance_ids(question, context)
         read_instances = context.instance_ids if context and context.mode != "none" else set()

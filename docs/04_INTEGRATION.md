@@ -238,7 +238,7 @@ await pending.catch(() => undefined)
 
 | Компонент | Версия / контракт | Что важно |
 |---|---|---|
-| Наш transports ↔ схема редактора | контракт `0.2.0` (`VERSION`, `contractVersion`, `v4\|contract:0.2.0\|pack:<ISO>`) | добавление полей — minor, изменение смысла — major; сверяйте `health.contractVersion` перед вызовом `ask` |
+| Наш transports ↔ схема редактора | контракт `0.2.0` (`VERSION`, `contractVersion`, `v5\|contract:0.2.0\|pack:<ISO>`) | добавление полей — minor, изменение смысла — major; сверяйте `health.contractVersion` перед вызовом `ask` |
 | sc-machine | 0.10.5, C++20 | `parallel_actions = true`, `max_events_and_agents_threads ≥ 16` (в репозитории 32) |
 | `ostis-ui-editor` | `previewHtml.ts`, ожидание 30 000 мс | наш клиентский таймаут 35 с и LLM 25 с согласованы |
 | `ostis-ui` (транслятор) | `action_translate_sc_to_html` | агент не вызывает и не изменяет его ключевые узлы |

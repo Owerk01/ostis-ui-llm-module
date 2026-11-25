@@ -14,6 +14,7 @@
 > - ответы по каталогу (16 типов, 27 свойств, 6 отношений), 5 принципов,
 >   методика и устройство среды;
 > - пост-валидация идентификаторов, guard неизвестных id и чипы оснований;
+> - ответ на языке вопроса и защита от раскрытия внутренних правил промпта;
 > - отмена, таймауты, ошибки LLM, повтор запроса;
 > - обработка вопроса вне потока событий: ограниченная очередь, pending-сообщение,
 >   watchdog висячих действий;
@@ -168,7 +169,7 @@ Dev-стенд позволяет сменить адрес сервиса и п
 ```
 external/            read-only клоны репозиториев команды (gitignore)
 platform/            repo.path и конфигурация sc-machine
-knowledge/           pack.json, provenance.json, prompt_v*.md (текущий v4), purpose_overrides.json
+knowledge/           pack.json, provenance.json, prompt_v*.md (текущий v5), purpose_overrides.json
 kb/ui_assistant/     наши конструкции диалога и знаний + generated тексты каталога
 tools/               setup, сборка БЗ, pack, смоук
 service/             Python-сервис: LLM, знания, валидация, FastAPI

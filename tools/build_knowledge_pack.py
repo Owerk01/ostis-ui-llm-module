@@ -343,7 +343,7 @@ def build_pack(
 
     return {
         "pack_version": generated_at,
-        "prompt_version": "v4",
+        "prompt_version": "v5",
         "generated_at": generated_at,
         "degraded": degraded,
         "sources": {
