@@ -22,6 +22,7 @@ import {
 } from 'ts-sc-client'
 
 import { resolveClientTimeoutMs } from './timeout.ts'
+import { parseServiceState, serviceAlive, type ServiceStateSnapshot } from './serviceHealth.ts'
 import { findMessageInResult, type ResultRow } from './actionResult'
 import { isStableDialogId, newDialogId } from './dialogId'
 import { DialogNotFoundError } from './types'
@@ -30,6 +31,7 @@ import type {
   AssistantHealth,
   AssistantMessage,
   AssistantTransport,
+  KnowledgeSource,
   MessageState,
   SourceRef,
 } from './types'
@@ -78,6 +80,9 @@ interface Keynodes {
   nrelPromptVersion: ScAddr
   nrelKnowledgeSource: ScAddr
   nrelUiId: ScAddr
+  service: ScAddr
+  nrelUiServiceState: ScAddr
+  nrelUiServiceHeartbeat: ScAddr
 }
 
 export class ScMemoryTransport implements AssistantTransport {
@@ -99,27 +104,47 @@ export class ScMemoryTransport implements AssistantTransport {
 
   async health(): Promise<AssistantHealth> {
     let connected = false
+    let serviceSnapshot: ServiceStateSnapshot | null = null
     try {
       const k = await this.keynodes()
       connected = (await this.client.getElementsTypes([k.dialog])).length > 0
+      serviceSnapshot = await this.readServiceState(k)
     } catch {
       connected = false
     }
-    let derived = healthFromMessages([])
-    if (connected && this.dialogId) {
-      try {
-        derived = healthFromMessages(await this.history(this.dialogId))
-      } catch {
-        // История может быть ещё пустой — остаёмся в unknown.
-      }
+
+    // Снимок сервиса — источник истины; без него (ошибка чтения) — fallback по истории.
+    const derived = serviceSnapshot ? null : healthFromMessages([])
+    const source: KnowledgeSource =
+      serviceSnapshot?.knowledgeSource ?? derived?.knowledgeSource ?? 'unknown'
+    const model = serviceSnapshot?.model ?? derived?.model ?? null
+    const packVersion = serviceSnapshot?.packVersion ?? derived?.packVersion ?? ''
+
+    let agentAlive = false
+    let serviceState = 'starting'
+    let queueDepth = 0
+    if (serviceSnapshot) {
+      agentAlive = serviceAlive(serviceSnapshot)
+      serviceState = serviceSnapshot.state ?? 'starting'
+      queueDepth = serviceSnapshot.queueSize ?? 0
     }
+
     return {
-      llm: { backend: 'sc-memory', model: derived.model, reachable: connected },
+      llm: { backend: 'sc-memory', model, reachable: connected },
       kb: {
         connected,
-        knowledgeSource: derived.knowledgeSource,
-        packVersion: derived.packVersion,
+        knowledgeSource: source,
+        packVersion,
       },
+      schemaLoaded: connected,
+      agentAlive,
+      state: serviceState,
+      model,
+      packVersion,
+      promptVersion: serviceSnapshot?.promptVersion ?? undefined,
+      knowledgeSource: source,
+      queueDepth,
+      contractVersion: serviceSnapshot?.contractVersion ?? '0.1.0',
     }
   }
 
@@ -494,6 +519,7 @@ export class ScMemoryTransport implements AssistantTransport {
       ACTION_CLASS,
       'action_initiated',
       'action_finished',
+      'concept_ui_dialog_service',
     ] as const
     const relations = [
       'nrel_ui_dialog_message',
@@ -505,6 +531,8 @@ export class ScMemoryTransport implements AssistantTransport {
       'nrel_ui_prompt_version',
       'nrel_ui_knowledge_source',
       'nrel_ui_id',
+      'nrel_ui_service_state',
+      'nrel_ui_service_heartbeat',
     ] as const
 
     // Невалидный тип = поиск без создания. С валидным типом resolveKeynodes
@@ -544,7 +572,19 @@ export class ScMemoryTransport implements AssistantTransport {
       nrelPromptVersion: resolved.nrel_ui_prompt_version,
       nrelKnowledgeSource: resolved.nrel_ui_knowledge_source,
       nrelUiId: resolved.nrel_ui_id,
+      service: resolved['concept_ui_dialog_service'],
+      nrelUiServiceState: resolved['nrel_ui_service_state'],
+      nrelUiServiceHeartbeat: resolved['nrel_ui_service_heartbeat'],
     }
     return this.keynodesCache
+  }
+
+  /**
+   * Снимок узла состояния сервиса (B0-2): JSON из link `nrel_ui_service_state`.
+   * Возвращает null, если узел или связь не найдены — вызывающий держит fallback.
+   */
+  private async readServiceState(k: Keynodes): Promise<ServiceStateSnapshot | null> {
+    const value = await this.linkValue(k.service, k.nrelUiServiceState)
+    return parseServiceState(value)
   }
 }

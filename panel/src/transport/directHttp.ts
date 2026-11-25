@@ -106,6 +106,13 @@ export class DirectHttpTransport implements AssistantTransport {
     const response = await this.fetchImpl(`${this.baseUrl}/health`)
     if (!response.ok) throw new Error(`Сервис ответил ${response.status}`)
     const body = (await response.json()) as AssistantHealth
+    const timeouts = body.timeouts
+      ? {
+          llmTimeoutS: body.timeouts.llmTimeoutS ?? body.timeouts.dialogClientTimeoutS ?? 25,
+          dialogClientTimeoutS:
+            body.timeouts.dialogClientTimeoutS ?? body.timeouts.llmTimeoutS ?? 35,
+        }
+      : undefined
     return {
       llm: {
         backend: body.llm?.backend ?? 'unknown',
@@ -117,6 +124,16 @@ export class DirectHttpTransport implements AssistantTransport {
         knowledgeSource: body.kb?.knowledgeSource === 'kb' ? 'kb' : 'fallback',
         packVersion: body.kb?.packVersion ?? 'unknown',
       },
+      schemaLoaded: body.schemaLoaded,
+      agentAlive: body.agentAlive,
+      state: body.state,
+      model: body.model ?? body.llm.model,
+      packVersion: body.packVersion ?? body.kb.packVersion,
+      promptVersion: body.promptVersion,
+      knowledgeSource: body.knowledgeSource ?? body.kb.knowledgeSource,
+      queueDepth: body.queueDepth,
+      contractVersion: body.contractVersion,
+      timeouts,
     }
   }
 

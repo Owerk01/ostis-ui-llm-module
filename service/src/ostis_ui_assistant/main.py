@@ -34,7 +34,7 @@ def run_sc_memory(settings: Settings) -> None:
         service = None
         worker = None
         try:
-            service = KnowledgeService(settings)
+            service = KnowledgeService(settings, state=state)
             worker = DialogWorker(service, settings, state)
             closed = close_orphan_actions(settings)
             if closed:

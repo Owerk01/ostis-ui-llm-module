@@ -226,6 +226,13 @@ export function AssistantPanel({
       : 'idle'
   const elapsedMs = startedAt === null ? 0 : Math.max(0, now - startedAt)
   const fallback = health?.kb.knowledgeSource === 'fallback'
+  // Правило гейта относится к sc-режиму редактора; в direct-http
+  // узла состояния нет, поэтому гейт не применяется.
+  const scMode = transport.kind === 'sc-memory'
+  const schemaLoaded = !scMode || (health?.schemaLoaded ?? true)
+  const agentAlive = !scMode || (health?.agentAlive ?? true)
+  const chatVisible = schemaLoaded
+  const inputBlocked = !schemaLoaded || !agentAlive
 
   const statusProps = useMemo(
     () => ({ health, healthError, state: requestState, elapsedMs, onCancel: cancel }),
@@ -246,6 +253,18 @@ export function AssistantPanel({
 
       <StatusBar {...statusProps} />
 
+      {scMode && health && health.schemaLoaded === false ? (
+        <div className={styles['oaa-banner']} role="status">
+          Схема ассистента не загружена в БЗ — чат скрыт. Выполните make kb-load.
+        </div>
+      ) : null}
+
+      {scMode && health && schemaLoaded && health.agentAlive === false ? (
+        <div className={cx(styles['oaa-banner'], styles['oaa-banner-error'])} role="alert">
+          Агент диалога не запущен. Ввод заблокирован. Запустите агент: make agent-start.
+        </div>
+      ) : null}
+
       {fallback ? (
         <div className={styles['oaa-banner']} role="status">
           Знания загружены из локальной копии, БЗ недоступна. Ответы ограничены knowledge
@@ -259,14 +278,21 @@ export function AssistantPanel({
         </div>
       ) : null}
 
-      <MessageList
-        messages={messages}
-        onSourceClick={onSourceClick}
-        onRetry={retry}
-        onSuggestion={send}
-      />
+      {chatVisible ? (
+        <MessageList
+          messages={messages}
+          onSourceClick={onSourceClick}
+          onRetry={retry}
+          onSuggestion={send}
+        />
+      ) : null}
 
-      <Composer disabled={!dialogId || pendingId !== null} onSend={send} />
+      {chatVisible ? (
+        <Composer
+          disabled={!dialogId || pendingId !== null || inputBlocked}
+          onSend={send}
+        />
+      ) : null}
     </section>
   )
 }

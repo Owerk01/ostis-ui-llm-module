@@ -35,6 +35,7 @@ logger = logging.getLogger(__name__)
 STATE_STARTING = "starting"
 STATE_READY = "ready"
 STATE_DEGRADED = "degraded"
+STATE_BUSY = "busy"
 STATE_STOPPING = "stopping"
 STATE_STOPPED = "stopped"
 

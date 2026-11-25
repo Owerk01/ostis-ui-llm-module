@@ -225,18 +225,32 @@
 - `ask(dialogId, …)`: не должен подменять диалог — неизвестный id даёт
   `DialogNotFoundError`; известный id обслуживает существующий диалог.
 
-### /health в режиме sc-memory
+### /health в режиме sc-memory (T4)
 
 `GET /health` доступен только в `direct-http`. В sc-режиме `ScMemoryTransport.health()`
-определяет `connected` по наличию ключевых узлов, а `knowledgeSource` и `model` —
-из последнего assistant-сообщения диалога. До первого ответа они равны
-`'unknown'` и `null` (в панели: «Источник знаний: уточняется», «через sc-агент»).
-Баннер локальной копии показывается только при явном `fallback`.
+читает узел состояния сервиса `concept_ui_dialog_service` (связи
+`nrel_ui_service_state` / `nrel_ui_service_heartbeat`) и возвращает как минимум:
+`schemaLoaded`, `agentAlive` (heartbeat свежее `service_lease_ttl_s`), `state`
+(`starting|ready|degraded|busy|stopping|stopped`), `model`, `packVersion`,
+`promptVersion`, `knowledgeSource`, `queueDepth`, `contractVersion`. Fallback
+через историю (`healthFromMessages`) остаётся только если узел состояния недоступен.
+Поля `llm`/`kb` сохранены для обратной совместимости; миграции не требуется.
+
+`KnowledgeService.health()` (direct-http) отдаёт те же поля из `ServiceState`,
+который передаётся в конструктор, плюс `timeouts` с фактическими значениями
+`llmTimeoutS` и `dialogClientTimeoutS`.
 
 `AssistantHealth.kb.knowledgeSource` принимает `'kb' | 'fallback' | 'unknown'`,
 `AssistantHealth.llm.model` — `string | null`. Поля `kb.connected`,
 `kb.knowledgeSource`, `kb.partial`, `kb.missing` в `KnowledgeService.health()`
 заполняются из `KbStatus`.
+
+**Правило для редактора:** нет схемы ассистента (`schemaLoaded === false`) → чат
+не показываем; схема есть, агент не жив (`agentAlive === false`) → чат показываем,
+ввод заблокирован, баннер «Агент диалога не запущен» и подсказка
+`make agent-start`. До первого ответа статус берётся из узла сервиса, а не из
+истории сообщений. `keynodes()` остаётся search-only и при отсутствии узлов
+бросает понятную ошибку «Схема ассистента не загружена в БЗ…».
 
 ### Потоки, очередь и таймауты (B0-1)
 

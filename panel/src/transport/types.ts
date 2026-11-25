@@ -33,6 +33,18 @@ export interface AssistantMessage {
 export interface AssistantHealth {
   llm: { backend: string; model: string | null; reachable: boolean }
   kb: { connected: boolean; knowledgeSource: KnowledgeSource; packVersion: string }
+  /** Источник и состояние сервиса из узла состояния (sc-memory). */
+  schemaLoaded?: boolean
+  agentAlive?: boolean
+  state?: string
+  model?: string | null
+  promptVersion?: string
+  knowledgeSource?: KnowledgeSource
+  packVersion?: string
+  queueDepth?: number
+  contractVersion?: string
+  /** Фактические значения таймаутов: клиент ждёт дольше LLM. */
+  timeouts?: { llmTimeoutS: number; dialogClientTimeoutS: number }
 }
 
 export interface AssistantTransport {

@@ -2,6 +2,22 @@
 
 ## Unreleased
 
+### T4: health из узла состояния сервиса и гейт показа чата
+
+- `KnowledgeService.health()` принимает `ServiceState` и возвращает
+  `schemaLoaded`, `agentAlive` (heartbeat свежее `service_lease_ttl_s`), `state`,
+  `model`, `packVersion`, `promptVersion`, `knowledgeSource`, `queueDepth`,
+  `contractVersion`; поля `llm`/`kb` сохранены для обратной совместимости.
+  В узле состояния добавлено состояние `busy`.
+- `ScMemoryTransport.health()` читает снимок из `nrel_ui_service_state` и не
+  зависит от истории сообщений; fallback по истории остаётся только при
+  недоступном узле. `DirectHttpTransport` передаёт новые поля в панель.
+- `AssistantHealth` расширен новыми полями (опциональными) — миграции не требуется.
+  Панель скрывает чат без схемы, а при неживом агенте показывает баннер и блокирует ввод.
+- `docs/01_CONTRACTS.md`: правило для редактора; `docs/04_INTEGRATION.md`: пример gating.
+- Тесты: `test_health_from_service_node`, протухший heartbeat/остановка агента,
+  разбор снимка и проверка аренды в панели.
+
 ### T3: таймауты из конфигурации, клиент ждёт дольше LLM
 
 - В `Settings` добавлен `dialog_client_timeout_s: float = 35.0` с валидатором:

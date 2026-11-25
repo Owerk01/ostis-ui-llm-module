@@ -97,8 +97,15 @@ await client.connect()
 const transport = new ScMemoryTransport(client)
 
 const health = await transport.health()
+if (health.schemaLoaded === false) {
+  throw new Error('Схема ассистента не загружена в БЗ: выполните make kb-load')
+}
+if (health.agentAlive === false) {
+  // Чат показываем, но ввод блокируем и показываем баннер.
+  console.warn('Агент диалога не запущен: make agent-start')
+}
 if (!health.llm.reachable) {
-  throw new Error('Агент диалога не запущен: выполните make agent')
+  throw new Error('Агент диалога не запущен: выполните make agent-start')
 }
 
 // Id диалога хранит редактор (sessionStorage, ключ dialogId:<interfaceId>).

@@ -9,10 +9,11 @@ import time
 from dataclasses import asdict, dataclass, field
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from ..config import Settings
 from ..llm.base import LLMBackend, LLMError, LLMStats, LLMTimeout, create_backend
+from ..sc.service_state import CONTRACT_VERSION, STATE_STARTING, lease_is_live
 from .identifiers import ALL_IDENTIFIERS, ENVIRONMENT_IDENTIFIERS, PROPERTY_KEYS
 from .kb_reader import KbStatus, close as close_kb, load_pack_from_kb
 from .tokens import near_context_limit
@@ -25,6 +26,9 @@ from .render import (
     sanitize_question,
 )
 from .validate import ValidationResult, extract_identifiers, find_unknown, validate_answer
+
+if TYPE_CHECKING:
+    from ..sc.service_state import ServiceState
 
 logger = logging.getLogger(__name__)
 
@@ -61,8 +65,14 @@ class AnswerResult:
 
 
 class KnowledgeService:
-    def __init__(self, settings: Settings, backend: LLMBackend | None = None) -> None:
+    def __init__(
+        self,
+        settings: Settings,
+        backend: LLMBackend | None = None,
+        state: "ServiceState | None" = None,
+    ) -> None:
         self.settings = settings
+        self._state = state
         self.pack = load_pack(settings.knowledge_pack_path)
         self.template = load_template(settings.prompt_path)
         self.kb_status = KbStatus()
@@ -289,32 +299,71 @@ class KnowledgeService:
         model_available = True
         if hasattr(self.backend, "model_available"):
             model_available = bool(self.backend.model_available())
+
+        snapshot = self._state.snapshot() if self._state is not None else None
+        ttl = self.settings.service_lease_ttl_s
+        now = datetime.now(timezone.utc)
+
+        schema_loaded = bool(self.kb_status.connected)
+        agent_alive = False
+        service_state = STATE_STARTING
+        queue_depth = 0
+        contract_version = CONTRACT_VERSION
+        model = self.settings.llm_model
+        pack_version = self.pack_version
+        prompt_version = self.prompt_version
+        knowledge_source = self.knowledge_source
+
+        if snapshot is not None:
+            agent_alive = lease_is_live(
+                snapshot,
+                snapshot.get("heartbeat_at"),
+                ttl_s=ttl,
+                now=now,
+            )
+            service_state = str(snapshot.get("state", STATE_STARTING))
+            queue_depth = int(snapshot.get("queue_size", 0) or 0)
+            contract_version = str(snapshot.get("contract_version", CONTRACT_VERSION))
+            model = str(snapshot.get("model", self.settings.llm_model))
+            pack_version = str(snapshot.get("pack_version", self.pack_version))
+            prompt_version = str(snapshot.get("prompt_version", self.prompt_version))
+            knowledge_source = str(snapshot.get("knowledge_source", self.knowledge_source))
+
         return {
             "llm": {
                 "backend": self.settings.llm_backend,
-                "model": self.settings.llm_model,
+                "model": model,
                 "reachable": self.backend.health(),
                 "model_available": model_available,
             },
             "kb": {
                 "connected": self.kb_status.connected,
-                "knowledgeSource": self.knowledge_source,
-                "packVersion": self.pack_version,
+                "knowledgeSource": knowledge_source,
+                "packVersion": pack_version,
                 "degraded": bool(self.pack.get("degraded")),
                 "partial": self.kb_status.partial,
                 "missing": self.kb_status.missing,
                 "counts": self.kb_status.counts,
                 "errors": self.kb_status.errors,
             },
+            "schemaLoaded": schema_loaded,
+            "agentAlive": agent_alive,
+            "state": service_state,
+            "model": model,
+            "packVersion": pack_version,
+            "promptVersion": prompt_version,
+            "knowledgeSource": knowledge_source,
+            "queueDepth": queue_depth,
+            "contractVersion": contract_version,
             "sc_connected": self.kb_status.connected,
-            "knowledge_source": self.knowledge_source,
-            "pack_version": self.pack_version,
-            "prompt_version": self.prompt_version,
+            "knowledge_source": knowledge_source,
+            "pack_version": pack_version,
+            "prompt_version": prompt_version,
             "prompt_estimated_tokens": self._prompt.system_tokens,
             "knowledge_estimated_tokens": self._prompt.knowledge_tokens,
             "timeouts": {
-                "llm_timeout_s": self.settings.llm_timeout_s,
-                "dialog_client_timeout_s": self.settings.dialog_client_timeout_s,
+                "llmTimeoutS": self.settings.llm_timeout_s,
+                "dialogClientTimeoutS": self.settings.dialog_client_timeout_s,
             },
         }
 
