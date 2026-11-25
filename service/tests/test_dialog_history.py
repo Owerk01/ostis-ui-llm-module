@@ -8,7 +8,9 @@ from ostis_ui_assistant.config import Settings
 from ostis_ui_assistant.knowledge.history import prepare_history
 from ostis_ui_assistant.knowledge.render import (
     FEW_SHOT,
+    HISTORY_INSTRUCTION,
     HISTORY_TOKEN_BUDGET,
+    HISTORY_TRUNCATION_MARKER,
     build_messages,
     fit_history,
 )
@@ -148,7 +150,24 @@ def test_history_after_few_shot_does_not_shrink_knowledge(
     assert with_history.messages[0] == without.messages[0]
     assert with_history.messages[1 : 1 + len(FEW_SHOT)] == FEW_SHOT
     kept, _ = fit_history(history)
-    assert with_history.messages[1 + len(FEW_SHOT) : -1] == kept
+    assert with_history.messages[1 + len(FEW_SHOT)] == {
+        "role": "system",
+        "content": HISTORY_INSTRUCTION + "\n" + HISTORY_TRUNCATION_MARKER,
+    }
+    assert with_history.messages[2 + len(FEW_SHOT) : -1] == kept
     assert len(kept) < len(history)
     assert with_history.messages[-1] == {"role": "user", "content": "вопрос"}
     assert 0 < with_history.history_tokens <= HISTORY_TOKEN_BUDGET
+    assert with_history.history_truncated is True
+
+
+def test_history_instruction_is_added_only_with_history(
+    pack: dict, template: str
+) -> None:
+    without = build_messages("вопрос", pack, template)
+    with_history = build_messages(
+        "вопрос", pack, template, history=[{"role": "user", "content": "привет"}]
+    )
+    assert HISTORY_INSTRUCTION not in [item["content"] for item in without.messages]
+    assert {"role": "system", "content": HISTORY_INSTRUCTION} in with_history.messages
+    assert with_history.history_truncated is False

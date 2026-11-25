@@ -5,7 +5,7 @@ from __future__ import annotations
 import logging
 import uuid
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, Iterable
 
 from sc_client.client import search_by_template, set_link_contents
 from sc_client.constants import sc_type
@@ -503,6 +503,48 @@ def read_history(dialog: ScAddr) -> list[dict[str, Any]]:
         )
     items.sort(key=lambda pair: pair[0])
     return [item for _, item in items]
+
+
+def read_last_context(
+    dialog: ScAddr, *, exclude: Iterable[Any] = ()
+) -> ScAddr | None:
+    """Последний узел контекста из сообщений диалога; только чтение.
+
+    След `nrel_ui_dialog_context` пишется на user-сообщении вместе с `rrel_3`.
+    Если следующий вопрос пришёл без нового контекста, его надо восстановить
+    из истории, иначе анафора («а откуда она читает?») теряет референт.
+    """
+    excluded = {str(value) for value in exclude}
+    templ = ScTemplate()
+    templ.quintuple(
+        dialog,
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE >> "_message",
+        sc_type.VAR_PERM_POS_ARC,
+        ScKeynodes["nrel_ui_dialog_message"],
+    )
+    templ.quintuple(
+        "_message",
+        sc_type.VAR_COMMON_ARC,
+        sc_type.VAR_NODE >> "_context",
+        sc_type.VAR_PERM_POS_ARC,
+        ScKeynodes["nrel_ui_dialog_context"],
+    )
+    ordinals = _bulk_ordinals(dialog)
+    best: tuple[int, int, ScAddr] | None = None
+    for index, row in enumerate(search_by_template(templ)):
+        message = row.get("_message")
+        context = row.get("_context")
+        if message is None or context is None:
+            continue
+        if str(message.value) in excluded:
+            continue
+        if not context.is_valid():
+            continue
+        candidate = (ordinals.get(message.value, 0), index)
+        if best is None or candidate > best[:2]:
+            best = (candidate[0], candidate[1], context)
+    return best[2] if best is not None else None
 
 
 def _ordinal(dialog: ScAddr, message: ScAddr) -> int:

@@ -125,7 +125,28 @@ def create_app(
                 )
         else:
             dialog_id = dialogs.create_dialog()
-        user_message = dialogs.add_user_message(dialog_id, question)
+        # Без явного context продолжаем последний контекст диалога. Явный
+        # `mode: none` — это сигнал сбросить выделение, а не продолжить старое.
+        if request.context is None:
+            context_payload = dialogs.last_context(dialog_id)
+        else:
+            context_payload = request.context.model_dump()
+
+        context: InstanceContext | None = None
+        if context_payload and context_payload.get("mode") != "none":
+            interface_id = context_payload.get("interface_id")
+            if not interface_id:
+                raise HTTPException(
+                    status_code=400,
+                    detail={"code": "invalid_request", "error": "Не указан интерфейс контекста"},
+                )
+            context = read_interface(
+                interface_id, context_payload.get("component_ids") or []
+            )
+
+        user_message = dialogs.add_user_message(
+            dialog_id, question, context=context_payload
+        )
         assistant = dialogs.add_assistant_pending(dialog_id)
         cancel_event = cancels.create(assistant.id)
 
@@ -135,17 +156,6 @@ def create_app(
             settings.dialog_history_turns,
             exclude_ids=(user_message.id, assistant.id),
         )
-
-        context: InstanceContext | None = None
-        if request.context and request.context.mode != "none":
-            if not request.context.interface_id:
-                raise HTTPException(
-                    status_code=400,
-                    detail={"code": "invalid_request", "error": "Не указан интерфейс контекста"},
-                )
-            context = read_interface(
-                request.context.interface_id, request.context.component_ids
-            )
 
         def generate() -> Iterator[str]:
             yield sse_event(

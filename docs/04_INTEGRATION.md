@@ -230,6 +230,12 @@ await pending.catch(() => undefined)
 ```
 
 Кнопка «Новый диалог» создаёт свежий id (`ensureDialog()` без аргумента).
+Для непрерывности беседы редактор обязан хранить `dialogId` и передавать его в
+`ensureDialog(savedId)`, иначе после F5 откроется пустой диалог. Контекст
+выделения передаётся в `ask(..., { context })`; если его не передать, сервис
+восстановит последний контекст из истории этого `dialogId`, а явный
+`mode: 'none'` сбросит выделение.
+
 Клиент ждёт `action_finished` не дольше 35 с (`DIALOG_CLIENT_TIMEOUT_S`,
 `VITE_DIALOG_CLIENT_TIMEOUT_S`) — больше чем LLM (25 с) и меньше чем 30 с у
 `previewHtml.ts`.

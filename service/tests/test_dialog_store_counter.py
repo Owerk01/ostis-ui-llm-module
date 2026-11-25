@@ -94,6 +94,31 @@ def test_read_history_batches_queries(monkeypatch) -> None:
     assert calls <= 12  # вместо ~10 запросов на каждое сообщение
 
 
+def test_read_last_context_returns_latest_and_honors_exclusion(monkeypatch) -> None:
+    class FakeAddr:
+        def __init__(self, value: int) -> None:
+            self.value = value
+
+        def is_valid(self) -> bool:
+            return True
+
+    rows = [
+        {"_message": FakeAddr(10), "_context": FakeAddr(20)},
+        {"_message": FakeAddr(11), "_context": FakeAddr(21)},
+    ]
+    monkeypatch.setattr(dialog_store, "search_by_template", lambda _: rows)
+    monkeypatch.setattr(dialog_store, "_bulk_ordinals", lambda _: {10: 1, 11: 2})
+    monkeypatch.setattr(
+        dialog_store,
+        "ScKeynodes",
+        {"nrel_ui_dialog_message": MagicMock(), "nrel_ui_dialog_context": MagicMock()},
+    )
+
+    dialog = MagicMock(value=99)
+    assert dialog_store.read_last_context(dialog).value == 21
+    assert dialog_store.read_last_context(dialog, exclude=(11,)).value == 20
+
+
 def test_roles_above_ten_are_generated(monkeypatch) -> None:
     captured: list[str] = []
 

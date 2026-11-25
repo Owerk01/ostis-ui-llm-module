@@ -26,6 +26,8 @@ class DialogMessage:
     code: str = DEFAULT_CODE
     sources: list[dict[str, str]] = field(default_factory=list)
     error: str | None = None
+    # Внутренний след контекста запроса; в публичный history-контракт не попадает.
+    context: dict[str, Any] | None = None
 
     def to_dict(self) -> dict[str, Any]:
         return {
@@ -61,13 +63,24 @@ class DialogStore:
         with self._lock:
             return [message.to_dict() for message in self._dialogs.get(dialog_id, [])]
 
-    def add_user_message(self, dialog_id: str, text: str) -> DialogMessage:
+    def last_context(self, dialog_id: str) -> dict[str, Any] | None:
+        """Последний контекст user-сообщения, включая явный `mode=none`."""
+        with self._lock:
+            for message in reversed(self._dialogs.get(dialog_id, [])):
+                if message.role == "user" and message.context is not None:
+                    return dict(message.context)
+        return None
+
+    def add_user_message(
+        self, dialog_id: str, text: str, *, context: dict[str, Any] | None = None
+    ) -> DialogMessage:
         message = DialogMessage(
             id=f"msg-{uuid.uuid4()}",
             role="user",
             text=text,
             state="done",
             created_at=utc_now(),
+            context=dict(context) if context is not None else None,
         )
         with self._lock:
             self._dialogs.setdefault(dialog_id, []).append(message)

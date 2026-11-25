@@ -37,6 +37,15 @@ INSTANCE_INSTRUCTION = (
     "выдуманными. Интерфейс не изменяешь.\n"
     "ЭКЗЕМПЛЯР"
 )
+HISTORY_INSTRUCTION = (
+    "Ниже — предыдущая беседа с этим пользователем, а не few-shot-примеры.\n"
+    "Используй её, чтобы понимать местоимения и уточнения вроде «он», «эта кнопка», "
+    "«а какие у него свойства»: они относятся к последнему обсуждённому компоненту.\n"
+    "Факты бери из блока ЗНАНИЯ и, если он передан, из блока ЭКЗЕМПЛЯР; если старый "
+    "ответ противоречит им, доверяй ЗНАНИЯМ.\n"
+    "ПРЕДЫДУЩАЯ БЕСЕДА"
+)
+HISTORY_TRUNCATION_MARKER = "[часть истории усечена: показаны только последние сообщения]"
 TRUNCATION_MARKER = "[модель интерфейса усечена: показано {shown} из {total} компонентов]"
 PROPERTY_ORDER = [
     "name",
@@ -269,6 +278,7 @@ class PromptBuildResult:
     instance_total: int = 0
     instance_truncated: bool = False
     history_tokens: int = 0
+    history_truncated: bool = False
 
 
 @dataclass
@@ -691,7 +701,13 @@ def build_messages(
         messages.extend(FEW_SHOT)
     if history:
         trimmed, result.history_tokens = fit_history(history, budget=history_budget)
-        messages.extend(trimmed)
+        result.history_truncated = len(trimmed) < len(history)
+        if trimmed:
+            instruction = HISTORY_INSTRUCTION
+            if result.history_truncated:
+                instruction += "\n" + HISTORY_TRUNCATION_MARKER
+            messages.append({"role": "system", "content": instruction})
+            messages.extend(trimmed)
     # Знания и few-shot примеры на русском не должны задавать язык ответа.
     # Для не-русского вопроса добавляем явную инструкцию прямо перед ним.
     directive = language_directive(language_question or question)

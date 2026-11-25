@@ -73,6 +73,7 @@ class AnswerResult:
     instance_truncated: bool = False
     history_messages: int = 0
     history_tokens: int = 0
+    history_truncated: bool = False
 
 
 class KnowledgeService:
@@ -366,6 +367,7 @@ class KnowledgeService:
             instance_truncated=built.instance_truncated,
             history_messages=len(prompt_history),
             history_tokens=built.history_tokens,
+            history_truncated=built.history_truncated,
         )
         self._write_log(question, result, built)
         return result
@@ -398,6 +400,7 @@ class KnowledgeService:
             "instance_truncated": result.instance_truncated,
             "history_messages": result.history_messages,
             "history_tokens": result.history_tokens,
+            "history_truncated": result.history_truncated,
             "history_turns_limit": self.settings.dialog_history_turns,
             "guard": result.guard,
         }

@@ -138,10 +138,18 @@ class DialogWorker:
             logger.info("Действие %s уже завершено, пропускаю", job.action.value)
             return
         instance: InstanceContext | None = None
-        if job.context is not None:
+        context_addr = job.context
+        if context_addr is None:
+            # Пользователь может уточнить предыдущий вопрос, не повторно
+            # выделяя компонент. Контекст хранится на прошлом сообщении БЗ.
+            try:
+                context_addr = dialog_store.read_last_context(job.dialog)
+            except Exception as exc:  # noqa: BLE001 - контекст не должен ронять ответ
+                logger.warning("Не удалось восстановить контекст из истории: %s", exc)
+        if context_addr is not None:
             try:
                 # Только чтение: шаблоны не создают узлы и связей в БЗ.
-                instance = read_context(job.context)
+                instance = read_context(context_addr)
             except Exception as exc:  # noqa: BLE001 - контекст не должен ронять ответ
                 logger.warning("Не удалось прочитать контекст rrel_3: %s", exc)
         history = self._history(job)

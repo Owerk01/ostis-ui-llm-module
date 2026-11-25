@@ -129,6 +129,45 @@ def test_worker_reads_context_before_answer(monkeypatch) -> None:
     assert complete.call_args.kwargs["state"] == worker_module.kn.STATUS_DONE
 
 
+def test_worker_restores_context_from_previous_turn(monkeypatch) -> None:
+    """Второй вопрос без rrel_3 продолжает обсуждение выделенного компонента."""
+    instance = InstanceContext(
+        mode="selection",
+        interface_id="ex_login",
+        components=[ComponentData(idtf="ex_login_cmp_10")],
+    )
+    seen: list[InstanceContext | None] = []
+    monkeypatch.setattr(worker_module.dialog_store, "read_last_context", lambda _: 777)
+    monkeypatch.setattr(
+        worker_module, "read_context", lambda addr: instance if addr == 777 else None
+    )
+    monkeypatch.setattr(worker_module.dialog_store, "read_history", lambda _: [])
+    monkeypatch.setattr(worker_module.dialog_store, "is_action_finished", lambda _: False)
+    monkeypatch.setattr(
+        worker_module.dialog_store, "complete_assistant_message", MagicMock()
+    )
+    monkeypatch.setattr(worker_module, "finish_action_with_status", MagicMock())
+
+    class FakeService:
+        def answer(self, question, cancel_event=None, context=None, history=None):
+            seen.append(context)
+            return _answer()
+
+    job = DialogJob(
+        action=MagicMock(value=1),
+        dialog=MagicMock(value=2),
+        question="а откуда она читает данные?",
+        message=MagicMock(value=3),
+    )
+    DialogWorker(FakeService(), _worker_settings())._process(job)
+
+    assert seen == [instance]
+
+
+def _worker_settings() -> SimpleNamespace:
+    return SimpleNamespace(dialog_worker_threads=1, dialog_queue_size=2)
+
+
 def test_worker_resolves_instance_source_by_id(monkeypatch) -> None:
     button = ScAddr(2002)
     context = InstanceContext(
@@ -187,6 +226,56 @@ def test_direct_http_ask_with_context_reads_instance(settings, monkeypatch) -> N
             assert response.status_code == 200
             response.read()
     assert seen == [instance]
+
+
+def test_direct_http_reuses_last_context_until_explicit_none(
+    settings, monkeypatch
+) -> None:
+    instance = InstanceContext(
+        mode="whole",
+        interface_id="ex_login",
+        components=[ComponentData(idtf="ex_login_cmp_10")],
+    )
+    seen: list[InstanceContext | None] = []
+    monkeypatch.setattr(app_module, "read_interface", lambda interface_id, ids: instance)
+    service_settings = settings
+
+    class FakeService:
+        settings = service_settings
+        prompt_version = "v4"
+
+        def answer(self, question, cancel_event=None, context=None, history=None):
+            seen.append(context)
+            return _answer()
+
+        def close(self) -> None:
+            return None
+
+    app = app_module.create_app(settings, service=FakeService())
+    with TestClient(app) as client:
+        dialog_id = client.post("/dialog").json()["dialog_id"]
+        for payload in (
+            {
+                "question": "какие компоненты?",
+                "dialog_id": dialog_id,
+                "context": {
+                    "mode": "whole",
+                    "interface_id": "ex_login",
+                    "component_ids": ["ex_login_cmp_10"],
+                },
+            },
+            {"question": "а какие у него связи?", "dialog_id": dialog_id},
+            {
+                "question": "вернёмся к каталогу",
+                "dialog_id": dialog_id,
+                "context": {"mode": "none"},
+            },
+        ):
+            with client.stream("POST", "/ask", json=payload) as response:
+                assert response.status_code == 200
+                response.read()
+
+    assert seen == [instance, instance, None]
 
 
 def test_direct_http_rejects_context_without_interface(settings) -> None:

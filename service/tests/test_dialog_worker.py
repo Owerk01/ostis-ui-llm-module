@@ -29,6 +29,9 @@ def _patch_common(monkeypatch, *, finished: bool = False):
     monkeypatch.setattr(
         worker_module.dialog_store, "is_action_finished", lambda _: finished
     )
+    monkeypatch.setattr(
+        worker_module.dialog_store, "read_last_context", lambda *args, **kwargs: None
+    )
     complete = MagicMock()
     monkeypatch.setattr(
         worker_module.dialog_store, "complete_assistant_message", complete
