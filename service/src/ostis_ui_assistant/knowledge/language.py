@@ -90,16 +90,16 @@ def detect_language(text: str) -> str:
 
 
 LANGUAGE_DIRECTIVE = (
-    "Answer in exactly the same natural language as the user's question. "
-    "The knowledge block and the examples are in Russian, but they do not "
-    "determine the answer language: do not answer in Russian unless the "
-    "question is in Russian. Keep all concept_ui_*, nrel_ui_* and property "
-    "keys verbatim."
+    "The user's question is NOT in Russian. Answer in the language of that "
+    "question only — never in Russian. The knowledge block and the few-shot "
+    "examples are in Russian, but they do not determine the answer language. "
+    "Do not switch to Russian because of identifiers or examples. Keep all "
+    "concept_ui_*, nrel_ui_* and property keys verbatim."
 )
 
 
 def language_directive(question: str) -> str | None:
-    """Дополнительная инструкция перед вопросом, если он не на русском."""
+    """Инструкция для не-русского вопроса; добавляется в system и перед вопросом."""
     return None if detect_language(question) == "ru" else LANGUAGE_DIRECTIVE
 
 

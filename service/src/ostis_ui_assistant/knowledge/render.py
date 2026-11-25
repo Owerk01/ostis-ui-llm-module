@@ -712,6 +712,11 @@ def build_messages(
     # Для не-русского вопроса добавляем явную инструкцию прямо перед ним.
     directive = language_directive(language_question or question)
     if directive:
+        # Дублируем в главном системном сообщении: русские знания и примеры
+        # перевешивают одиночную инструкцию прямо перед вопросом.
+        result.system_prompt = f"{result.system_prompt}\n\n{directive}"
+        result.system_tokens = estimate_tokens(result.system_prompt)
+        messages[0]["content"] = result.system_prompt
         messages.append({"role": "system", "content": directive})
     messages.append({"role": "user", "content": sanitize_question(question)})
     result.messages = messages

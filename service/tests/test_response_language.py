@@ -73,6 +73,8 @@ def test_non_russian_question_gets_language_directive(pack: dict, template: str)
     ru = build_messages("Что такое concept_ui_button?", pack, template)
     en = build_messages("What does concept_ui_button do?", pack, template)
     assert all(item["content"] != LANGUAGE_DIRECTIVE for item in ru.messages)
+    assert LANGUAGE_DIRECTIVE in en.messages[0]["content"]
+    assert en.system_prompt == en.messages[0]["content"]
     assert en.messages[-2] == {"role": "system", "content": LANGUAGE_DIRECTIVE}
     assert en.messages[-1] == {
         "role": "user",
