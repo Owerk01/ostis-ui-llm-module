@@ -1,6 +1,6 @@
 {"id": "q001", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "q002", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
-{"id": "q003", "split": "dev", "verdict": "incorrect", "wrong_claims": ["утверждение, что остальные типы имеют action_id, а divider — нет"], "reviewer": "agent", "date": "2026-11-18"}
+{"id": "q003", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25", "note": "Переразметка по каталогу editor 24.11: у divider действительно нет action_id; автопроверка дала FAIL только из-за подстроки «нет свойств» в «нет свойства action_id»."}
 {"id": "q004", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "q005", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "q006", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
@@ -36,7 +36,7 @@
 {"id": "q036", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "q037", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "q038", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
-{"id": "q039", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
+{"id": "q039", "split": "dev", "verdict": "partial", "wrong_claims": ["назван идентификатор knowledge-узла ui_env_kb_module, хотя промпт прямо запрещает такие идентификаторы"], "reviewer": "agent", "date": "2026-11-25"}
 {"id": "q040", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "q041", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "q042", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
@@ -67,9 +67,20 @@
 {"id": "h021", "split": "holdout", "verdict": "partial", "wrong_claims": ["предложены concept_ui_text/concept_ui_image как подходящие типы при отказе"], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "h022", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "h023", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
-{"id": "h024", "split": "holdout", "verdict": "partial", "wrong_claims": ["не опровергнуто ложное утверждение об отсутствии action_id у divider"], "reviewer": "agent", "date": "2026-11-18"}
+{"id": "h024", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25", "note": "Переразметка по каталогу editor 24.11: у divider действительно нет action_id; ответ верно не меняет правила БЗ и указывает источники button/select/menu_item."}
 {"id": "h029", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "h025", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "h026", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "h027", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
 {"id": "h028", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-18"}
+{"id": "q047", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}
+{"id": "q048", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}
+{"id": "q049", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}
+{"id": "q050", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}
+{"id": "q051", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25", "note": "cmp_login_button из вопроса вырезан валидатором; ответ — отказ без выдуманных id экземпляра."}
+{"id": "q052", "split": "dev", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}
+{"id": "h030", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25", "note": "Автопроверка не распознала «для чтения» как «чита»; по смыслу ответ верен."}
+{"id": "h031", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}
+{"id": "h032", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}
+{"id": "h033", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25", "note": "cmp_login_field вырезан валидатором; ответ — отказ без выдуманных id экземпляра."}
+{"id": "h034", "split": "holdout", "verdict": "correct", "wrong_claims": [], "reviewer": "agent", "date": "2026-11-25"}

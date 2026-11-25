@@ -185,15 +185,18 @@ def make_settings(args: argparse.Namespace) -> Settings:
     else:
         prompt_path = defaults.prompt_path
         prompt_version = args.prompt_version or defaults.prompt_version
+    llm_timeout_s = (
+        args.timeout if args.timeout is not None else defaults.llm_timeout_s_batch
+    )
+    # В eval нет интерактивного клиента, но инвариант Settings («клиент ждёт
+    # дольше генерации») должен выполняться и для batch-таймаута.
+    client_timeout_s = max(defaults.dialog_client_timeout_s, llm_timeout_s + 5)
     return Settings(
         llm_model=args.model,
         llm_num_ctx=args.num_ctx,
         llm_temperature=args.temperature,
-        llm_timeout_s=(
-            args.timeout
-            if args.timeout is not None
-            else defaults.llm_timeout_s_batch
-        ),
+        llm_timeout_s=llm_timeout_s,
+        dialog_client_timeout_s=client_timeout_s,
         llm_keep_alive="0" if args.cold else "30m",
         knowledge_source="fallback" if args.source == "pack" else "kb",
         prompt_path=prompt_path,
@@ -515,7 +518,7 @@ def write_report(
         lines.append("</details>")
         lines.append("")
 
-    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    path.write_text("\n".join(lines).rstrip() + "\n", encoding="utf-8")
 
 
 def main() -> int:

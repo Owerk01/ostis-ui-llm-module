@@ -14,6 +14,19 @@
 
 Фактические коммиты — [`../knowledge/provenance.json`](../knowledge/provenance.json).
 
+Источник истины — **код редактора** (`client/src/model/*.ts`, i18n), а не
+`docs/catalog.md`: в каталоге команды до сих пор сказано «Одинаковый набор
+ключей у всех типов», тогда как `catalog.ts` с 24.11 исключает `action_id` у
+всех, кроме `button`/`select`/`menu_item`. Расхождение выносится отдельным WARN
+в `make drift` и отправлено Георгию. `docs/catalog.md` используется только как
+резервный путь сборки pack при недоступности Node.
+
+Новые связи `nrel_ui_input_target` / `nrel_ui_output_target` и ограничение
+`action_id` описаны в `pack.json` и в `kb/ui_assistant/generated/`; после любого
+коммита команды в `external/` обязательны `make pack` и `make drift` (последний
+входит в `make test`). Подписи `label_ru` приходят из `client/src/i18n/ru.ts`
+(`type.<typeId>`), а не из простой колонки «Название» в `docs/catalog.md`.
+
 ## Knowledge pack
 
 `knowledge/pack.json` — нормализованная выжимка каталога и домен-знаний,

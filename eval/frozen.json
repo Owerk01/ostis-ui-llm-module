@@ -1,8 +1,8 @@
 {
   "prompt_version": "v4",
   "prompt_v4.md": "0ea5fb6405cea4196ecb927486e8fa1e1b517bb685c5f9378d773fa8c0ad6708",
-  "gold_questions.jsonl": "aed4a0e6f35dadbcf9e68d668df53d1d3abc93beee9108412045be5d0a78bd60",
-  "holdout_questions.jsonl": "c176d25851a7be309bacda08447d1cd8dc5b5dfbdd002fe59099b4164068aa72",
-  "frozen_at": "2026-11-18T18:45:00Z",
-  "note": "Промпт обновлён в T1 (ограничение action_id, связи input/output); gold/holdout не менялись, перепрогон и новая заморозка — в T12."
+  "gold_questions.jsonl": "977073a6e3f99380d98760ec911a373948446cd7acad3c64a2061c4c49fff919",
+  "holdout_questions.jsonl": "82f19e3974041aba84fb21b6e82f3c05e7e5278792e80dc4c3a816609205771f",
+  "frozen_at": "2026-11-25T14:10:19Z",
+  "note": "T12: Catalog editor 24.11 changed ground truth (6 relations, action_id only for button/select/menu_item). Gold/holdout checks and questions revised before the runs; prompt_v4.md unchanged. Holdout is run once after this freeze; no thresholds changed."
 }
