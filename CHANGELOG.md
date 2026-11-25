@@ -2,6 +2,16 @@
 
 ## Unreleased
 
+### T11: актуальное написание типа неролевых отношений
+
+- Все 15 объявлений в `kb/ui_assistant/ui_dialog.scs` переведены с
+  `sc_node_norole_relation` на `sc_node_non_role_relation`; тест
+  `test_scs_uses_current_relation_spelling` следит за написанием в наших `.scs`.
+  Сборка sc-builder не выдаёт deprecation-предупреждений по нашим файлам.
+- Замечание для Георгия: `external/ostis-ui-editor/docs/abstract_ui_model.scs`
+  (read-only) всё ещё использует старое имя; warnings при сборке исходят только
+  от него, на совместимость не влияют.
+
 ### T10: транспорт как отдельный артефакт без React
 
 - `npm run build:transport` собирает `panel/dist-transport/` с публичным entry

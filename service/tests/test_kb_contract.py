@@ -22,6 +22,17 @@ def test_no_identifier_collisions() -> None:
     assert result.returncode == 0, result.stdout + result.stderr
 
 
+def test_scs_uses_current_relation_spelling() -> None:
+    """Наши .scs не должны использовать устаревшее имя типа отношения."""
+    files = sorted((*KB.glob("*.scs"), *GENERATED.parent.glob("*.scs")))
+    assert files, "тест не нашёл наши .scs"
+    for path in files:
+        text = path.read_text(encoding="utf-8")
+        assert "sc_node_norole_relation" not in text, path
+    dialog = (KB / "ui_dialog.scs").read_text(encoding="utf-8")
+    assert dialog.count("<- sc_node_non_role_relation;;") >= 12
+
+
 def test_domain_knowledge_complete(pack: dict) -> None:
     assert len(pack["principles"]) == 5
     assert len(pack["methodology_stages"]) >= 10
