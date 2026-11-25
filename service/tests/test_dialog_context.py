@@ -104,7 +104,7 @@ def test_worker_reads_context_before_answer(monkeypatch) -> None:
     monkeypatch.setattr(worker_module, "read_context", lambda _: instance)
 
     class FakeService:
-        def answer(self, question, cancel_event=None, context=None):
+        def answer(self, question, cancel_event=None, context=None, history=None):
             seen.append(context)
             return _answer()
 
@@ -163,7 +163,7 @@ def test_direct_http_ask_with_context_reads_instance(settings, monkeypatch) -> N
         settings = service_settings
         prompt_version = "v4"
 
-        def answer(self, question, cancel_event=None, context=None):
+        def answer(self, question, cancel_event=None, context=None, history=None):
             seen.append(context)
             return _answer()
 

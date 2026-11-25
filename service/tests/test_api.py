@@ -20,8 +20,9 @@ class FakeService:
         self.questions: list[str] = []
         self.closed = False
 
-    def answer(self, question: str, cancel_event=None) -> AnswerResult:
+    def answer(self, question: str, cancel_event=None, history=None) -> AnswerResult:
         self.questions.append(question)
+        self.last_history = history or []
         if self.mode == "unavailable":
             raise LLMUnavailable("нет соединения")
         if self.mode == "timeout":
@@ -129,6 +130,29 @@ def test_ask_saves_history(client: TestClient) -> None:
     assert history[0]["text"] == "вопрос"
     assert history[1]["state"] == "done"
     assert history[1]["code"] == "ok"
+
+
+def test_ask_passes_previous_turns_without_current(settings) -> None:
+    service = FakeService()
+    app = create_app(settings, service=service)
+    with TestClient(app) as test_client:
+        with test_client.stream(
+            "POST", "/ask", json={"question": "что такое concept_ui_button?"}
+        ) as response:
+            events = parse_sse(response.iter_lines())
+        dialog_id = events[0]["data"]["dialog_id"]
+        with test_client.stream(
+            "POST",
+            "/ask",
+            json={"question": "какие у него свойства?", "dialog_id": dialog_id},
+        ) as response:
+            assert response.status_code == 200
+            assert [event["event"] for event in parse_sse(response.iter_lines())][-1] == "done"
+
+    assert service.last_history == [
+        {"role": "user", "content": "что такое concept_ui_button?"},
+        {"role": "assistant", "content": "Ответ ассистента."},
+    ]
 
 
 def test_ask_rejects_empty_question(client: TestClient) -> None:

@@ -12,6 +12,7 @@ from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
 from ..config import Settings
+from ..knowledge.history import prepare_history
 from ..knowledge.instance import InstanceContext, read_interface
 from ..knowledge.service import Cancelled, KnowledgeService
 from ..llm.base import LLMTimeout, LLMUnavailable
@@ -124,9 +125,16 @@ def create_app(
                 )
         else:
             dialog_id = dialogs.create_dialog()
-        dialogs.add_user_message(dialog_id, question)
+        user_message = dialogs.add_user_message(dialog_id, question)
         assistant = dialogs.add_assistant_pending(dialog_id)
         cancel_event = cancels.create(assistant.id)
+
+        # Текущий вопрос и ещё pending-ответ не являются историей для промпта.
+        history = prepare_history(
+            dialogs.history(dialog_id),
+            settings.dialog_history_turns,
+            exclude_ids=(user_message.id, assistant.id),
+        )
 
         context: InstanceContext | None = None
         if request.context and request.context.mode != "none":
@@ -150,10 +158,10 @@ def create_app(
                 },
             )
             try:
-                if context is None:
-                    result = knowledge.answer(question, cancel_event)
-                else:
-                    result = knowledge.answer(question, cancel_event, context=context)
+                answer_kwargs = {"cancel_event": cancel_event, "history": history}
+                if context is not None:
+                    answer_kwargs["context"] = context
+                result = knowledge.answer(question, **answer_kwargs)
                 dialogs.update_assistant(
                     dialog_id,
                     assistant.id,

@@ -122,6 +122,20 @@ def test_single_turn_per_action(monkeypatch) -> None:
     assert dialog_agent.dialog_store.append_assistant_message.call_count == 1
 
 
+def test_agent_passes_current_message_address_for_history(monkeypatch) -> None:
+    service = SlowService()
+    worker = FakeWorker()
+    action = patch_sc(monkeypatch)
+    agent = make_agent(service, worker)
+
+    agent.on_event(MagicMock(), MagicMock(), action)
+
+    assert (
+        worker.jobs[0].question_addr
+        is dialog_agent.dialog_store.append_user_message.return_value
+    )
+
+
 def test_queue_overflow_finishes_with_busy(monkeypatch) -> None:
     service = SlowService()
     worker = FakeWorker(accept=False)

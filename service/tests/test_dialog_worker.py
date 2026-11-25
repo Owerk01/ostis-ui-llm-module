@@ -90,6 +90,53 @@ def test_timeout_marks_message_error_and_action_unsuccessful(monkeypatch) -> Non
     finish.assert_called_once_with(job.action, False)
 
 
+def test_worker_passes_recent_history_without_current_message(monkeypatch) -> None:
+    complete, _ = _patch_common(monkeypatch)
+    service = MagicMock()
+    service.answer.return_value = AnswerResult(
+        text="ответ",
+        model="qwen",
+        prompt_version="v4",
+        pack_version="2026-11-18T18:02:18Z",
+        sources=[],
+        latency_ms=1.0,
+        knowledge_source="kb",
+    )
+    raw_history = [
+        {
+            "scAddr": 1,
+            "role": "assistant",
+            "text": "старый ответ",
+            "state": "done",
+            "code": "ok",
+        },
+        {
+            "scAddr": 2,
+            "role": "user",
+            "text": "вопрос",
+            "state": "done",
+            "code": "ok",
+        },
+        {
+            "scAddr": 3,
+            "role": "assistant",
+            "text": "",
+            "state": "done",
+            "code": "pending",
+        },
+    ]
+    monkeypatch.setattr(worker_module.dialog_store, "read_history", lambda _: raw_history)
+    job = _job()
+    job.question_addr = MagicMock(value=2)
+
+    DialogWorker(service, _settings())._process(job)
+
+    assert service.answer.call_args.kwargs["history"] == [
+        {"role": "assistant", "content": "старый ответ"}
+    ]
+    assert complete.call_args.args[1] == "ответ"
+
+
 def test_finished_action_is_skipped(monkeypatch) -> None:
     complete, finish = _patch_common(monkeypatch, finished=True)
     service = MagicMock()

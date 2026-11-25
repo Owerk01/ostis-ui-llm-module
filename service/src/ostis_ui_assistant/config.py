@@ -46,6 +46,8 @@ class Settings(BaseSettings):
     # --- Обработка запросов диалога (B0-1) ---
     dialog_worker_threads: int = 1
     dialog_queue_size: int = 16
+    # Сколько последних сообщений диалога уходит в промпт (не долговременная память).
+    dialog_history_turns: int = 6
     service_heartbeat_interval_s: float = 5.0
     service_lease_ttl_s: float = 20.0
     watchdog_max_age_minutes: int = 30
@@ -86,6 +88,11 @@ class Settings(BaseSettings):
                 "DIALOG_CLIENT_TIMEOUT_S должен быть строго больше LLM_TIMEOUT_S: "
                 f"{self.dialog_client_timeout_s} <= {self.llm_timeout_s}. "
                 "Клиент должен ждать дольше, чем генерирует LLM."
+            )
+        if self.dialog_history_turns < 0:
+            raise ValueError(
+                "DIALOG_HISTORY_TURNS не может быть отрицательным: "
+                f"{self.dialog_history_turns}"
             )
         budgets = (
             self.knowledge_token_budget

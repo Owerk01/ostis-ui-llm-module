@@ -14,6 +14,7 @@ from typing import TYPE_CHECKING, Any
 from ..config import Settings
 from ..llm.base import LLMBackend, LLMError, LLMStats, LLMTimeout, create_backend
 from ..sc.service_state import CONTRACT_VERSION, STATE_STARTING, lease_is_live
+from .history import prepare_history
 from .identifiers import ALL_IDENTIFIERS, ENVIRONMENT_IDENTIFIERS, PROPERTY_KEYS
 from .instance import InstanceContext
 from .kb_reader import KbStatus, close as close_kb, load_pack_from_kb
@@ -76,6 +77,8 @@ class AnswerResult:
     instance_shown: int = 0
     instance_total: int = 0
     instance_truncated: bool = False
+    history_messages: int = 0
+    history_tokens: int = 0
 
 
 class KnowledgeService:
@@ -238,6 +241,7 @@ class KnowledgeService:
         question: str,
         cancel_event: threading.Event | None = None,
         context: InstanceContext | None = None,
+        history: list[dict[str, Any]] | None = None,
     ) -> AnswerResult:
         question = question.strip()
         if not question:
@@ -263,6 +267,7 @@ class KnowledgeService:
                 self._write_log(question, result, built)
                 return result
 
+        prompt_history = prepare_history(history or [], self.settings.dialog_history_turns)
         built = build_messages(
             prompt_question,
             self.pack,
@@ -270,6 +275,7 @@ class KnowledgeService:
             budget=self.settings.knowledge_token_budget,
             context=context,
             instance_budget=self.settings.instance_token_budget,
+            history=prompt_history,
             history_budget=self.settings.history_token_budget,
         )
         started = time.perf_counter()
@@ -343,6 +349,8 @@ class KnowledgeService:
             instance_shown=built.instance_shown,
             instance_total=built.instance_total,
             instance_truncated=built.instance_truncated,
+            history_messages=len(prompt_history),
+            history_tokens=built.history_tokens,
         )
         self._write_log(question, result, built)
         return result
@@ -372,6 +380,9 @@ class KnowledgeService:
             "instance_components_shown": result.instance_shown,
             "instance_components_total": result.instance_total,
             "instance_truncated": result.instance_truncated,
+            "history_messages": result.history_messages,
+            "history_tokens": result.history_tokens,
+            "history_turns_limit": self.settings.dialog_history_turns,
             "guard": result.guard,
         }
         path: Path = self.settings.dialog_log_path
@@ -457,6 +468,7 @@ class KnowledgeService:
                 "history": self.settings.history_token_budget,
                 "instance": self.settings.instance_token_budget,
                 "outputReserve": self.settings.output_reserve_tokens,
+                "historyTurns": self.settings.dialog_history_turns,
             },
         }
 

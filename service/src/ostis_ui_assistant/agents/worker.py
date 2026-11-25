@@ -18,6 +18,7 @@ from sc_kpm import ScKeynodes
 from sc_kpm.utils.action_utils import finish_action_with_status
 
 from ..config import Settings
+from ..knowledge.history import message_key, prepare_history
 from ..knowledge.identifiers import PROPERTY_KEYS
 from ..knowledge.instance import InstanceContext, read_context
 from ..knowledge.service import Cancelled, KnowledgeService
@@ -47,6 +48,8 @@ class DialogJob:
     message: ScAddr
     # rrel_3: узел контекста. Читается воркером, не в потоке событий sc-machine.
     context: Any = None
+    # Узел текущего вопроса, чтобы не включить его же в историю промпта.
+    question_addr: Any = None
 
 
 class DialogWorker:
@@ -140,14 +143,13 @@ class DialogWorker:
                 instance = read_context(job.context)
             except Exception as exc:  # noqa: BLE001 - контекст не должен ронять ответ
                 logger.warning("Не удалось прочитать контекст rrel_3: %s", exc)
+        history = self._history(job)
         try:
             # При корректной остановке сервиса `_stop` мягко прерывает генерацию.
-            if instance is None:
-                result = self._service.answer(job.question, cancel_event=self._stop)
-            else:
-                result = self._service.answer(
-                    job.question, cancel_event=self._stop, context=instance
-                )
+            answer_kwargs: dict[str, Any] = {"cancel_event": self._stop, "history": history}
+            if instance is not None:
+                answer_kwargs["context"] = instance
+            result = self._service.answer(job.question, **answer_kwargs)
         except Cancelled:
             dialog_store.complete_assistant_message(
                 job.message,
@@ -200,6 +202,30 @@ class DialogWorker:
             len(result.text),
             len(source_addrs),
             result.latency_ms,
+        )
+
+    def _history(self, job: DialogJob) -> list[dict[str, str]]:
+        """Последние завершённые сообщения диалога без текущего вопроса и pending."""
+        try:
+            raw = dialog_store.read_history(job.dialog)
+        except Exception as exc:  # noqa: BLE001 - история не должна ронять ответ
+            logger.warning("Не удалось прочитать историю диалога: %s", exc)
+            return []
+        excluded = {str(job.message.value)}
+        question_addr = getattr(job, "question_addr", None)
+        if question_addr is not None:
+            excluded.add(str(question_addr.value))
+        else:
+            # Битое состояние: след текущего вопроса мог остаться в истории без
+            # адреса в задании. Исключаем последнее совпадение по тексту.
+            for item in reversed(raw):
+                if item.get("role") == "user" and item.get("text") == job.question:
+                    excluded.add(message_key(item))
+                    break
+        return prepare_history(
+            raw,
+            getattr(self._settings, "dialog_history_turns", 6),
+            exclude_ids=excluded,
         )
 
     def _abort_job(self, job: DialogJob, reason: str, code: str) -> None:

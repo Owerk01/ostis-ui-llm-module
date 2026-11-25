@@ -29,6 +29,14 @@ def test_defaults_satisfy_timeout_order() -> None:
     assert s.dialog_client_timeout_s > s.llm_timeout_s
 
 
+def test_dialog_history_turns_default_and_validation() -> None:
+    s = Settings()
+    assert s.dialog_history_turns == 6
+    assert Settings(dialog_history_turns=0).dialog_history_turns == 0
+    with pytest.raises(Exception, match="DIALOG_HISTORY_TURNS"):
+        Settings(dialog_history_turns=-1)
+
+
 def test_prompt_budgets_fit_context_window() -> None:
     s = Settings()
     total = (
