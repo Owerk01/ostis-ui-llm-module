@@ -5,8 +5,12 @@
  * или по HTTP (отладочный). Оба транспорта обязаны реализовать этот интерфейс.
  */
 
+import type { OutcomeCode } from './outcome.ts'
+
 export type AssistantRole = 'user' | 'assistant'
 export type MessageState = 'pending' | 'streaming' | 'done' | 'error' | 'cancelled'
+
+export type { OutcomeCode } from './outcome.ts'
 
 export interface SourceRef {
   idtf: string
@@ -22,6 +26,13 @@ export interface AssistantMessage {
   text: string
   state: MessageState
   createdAt: string // ISO-8601
+  /**
+   * Код исхода. У assistant всегда заполнен: `pending` до ответа, один из
+   * OUTCOME_CODES после; у старых сообщений без link — `ok`. У user — `ok`.
+   */
+  code: OutcomeCode
+  /** Вычислено транспортом из `code`; редактор не знает список кодов. */
+  retryable: boolean
   model?: string | null
   promptVersion?: string
   knowledgeSource?: KnowledgeSource

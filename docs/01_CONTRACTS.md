@@ -145,8 +145,8 @@
 | `nrel_ui_value` (существующее) | текст сообщения в sc-link |
 | `nrel_ui_id` (существующее) | стабильный id диалога `dialog-<hex>` в sc-link |
 | `nrel_ui_message_time` | ISO-8601 UTC |
-| `nrel_ui_message_state` | `pending` / `done` / `error` / `cancelled` |
-| `nrel_ui_message_code` | машиночитаемый код исхода: `busy`, `llm_unavailable`, `llm_timeout`, `invalid_request`, `cancelled`, `agent_restarted`, `internal` |
+| `nrel_ui_message_state` | `pending` / `streaming` (зарезервирован) / `done` / `error` / `cancelled` |
+| `nrel_ui_message_code` | машиночитаемый код: `pending` до ответа; после — `ok`, `busy`, `llm_unavailable`, `llm_timeout`, `invalid_request`, `cancelled`, `agent_restarted`, `schema_missing`, `schema_mismatch`, `dialog_not_found`, `internal` |
 | `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `<версия промпта>\|pack:<ISO>` (сейчас `v4`) |
 | `nrel_ui_answer_source` | ответ → узел-основание |
 | `nrel_ui_knowledge_source` (существующее) | ответ → sc-link `kb` / `fallback` / `unknown` |
@@ -154,6 +154,29 @@
 Новых отношений для текста не вводится: используется существующее `nrel_ui_value`.
 Текст и состояние `pending`-сообщения обновляются на месте (`set_link_contents`),
 поэтому один запрос даёт ровно одно assistant-сообщение.
+
+#### Коды исхода и `retryable`
+
+Каждое assistant-сообщение имеет `code` в `nrel_ui_message_code`. Pending-сообщение
+пишется со служебным кодом `pending` (фиксированный выбор: `code` всегда заполнен),
+агент перезаписывает его финальным кодом из списка:
+`ok`, `busy`, `llm_unavailable`, `llm_timeout`, `invalid_request`, `cancelled`,
+`agent_restarted`, `schema_missing`, `schema_mismatch`, `dialog_not_found`, `internal`.
+Если у старого сообщения нет link с кодом, transports читают `ok`.
+Машиночитаемый список — `contract/identifiers.json`; он же задаёт состояния
+`pending | streaming | done | error | cancelled` (`streaming` пока не используется).
+
+`AssistantMessage` панели содержит обязательные `code: OutcomeCode` и
+`retryable: boolean`. `retryable` вычисляется transports из кода, а не в редакторе:
+`true` только для временных ошибок `busy`, `llm_unavailable`, `llm_timeout`,
+`agent_restarted`, `internal`. Остальные коды (включая `invalid_request`,
+`schema_missing`, `schema_mismatch`, `dialog_not_found`, `cancelled`, `pending`)
+требуют изменения вопроса/окружения или не должны повторяться автоматически.
+Редактор
+показывает кнопку «Повторить» **только** при `retryable === true`.
+
+Direct-http повторяет ту же модель: `/ask` отдаёт `code` в SSE `meta`/`error`/
+`cancelled` и в истории, `DirectHttpTransport` заполняет `code`/`retryable`.
 
 Порядок сообщения вычисляется в момент добавления как `max(rrel_N) + 1` по БЗ,
 а не из счётчика процесса (B0-2). `read_history` читает все значения, роли,

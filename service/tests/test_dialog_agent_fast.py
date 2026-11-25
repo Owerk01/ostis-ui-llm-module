@@ -106,6 +106,7 @@ def test_event_handler_returns_fast(monkeypatch) -> None:
     assert elapsed < 0.1, f"on_event занял {elapsed:.3f} с"
     assert service.called is False
     assert len(worker.jobs) == 1
+    assert dialog_agent.dialog_store.append_assistant_message.call_args.kwargs["code"] == "pending"
 
 
 def test_queue_overflow_finishes_with_busy(monkeypatch) -> None:

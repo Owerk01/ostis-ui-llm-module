@@ -9,6 +9,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timezone
 from typing import Any
 
+from ..sc.outcomes import DEFAULT_CODE, PENDING_CODE
+
 
 def utc_now() -> str:
     return datetime.now(timezone.utc).isoformat()
@@ -21,6 +23,7 @@ class DialogMessage:
     text: str
     state: str
     created_at: str
+    code: str = DEFAULT_CODE
     sources: list[dict[str, str]] = field(default_factory=list)
     error: str | None = None
 
@@ -30,6 +33,7 @@ class DialogMessage:
             "role": self.role,
             "text": self.text,
             "state": self.state,
+            "code": self.code,
             "createdAt": self.created_at,
             "sources": self.sources,
             "error": self.error,
@@ -76,6 +80,7 @@ class DialogStore:
             text="",
             state="pending",
             created_at=utc_now(),
+            code=PENDING_CODE,
         )
         with self._lock:
             self._dialogs.setdefault(dialog_id, []).append(message)
@@ -88,6 +93,7 @@ class DialogStore:
         *,
         text: str | None = None,
         state: str | None = None,
+        code: str | None = None,
         sources: list[dict[str, str]] | None = None,
         error: str | None = None,
     ) -> DialogMessage | None:
@@ -99,6 +105,8 @@ class DialogStore:
                     message.text = text
                 if state is not None:
                     message.state = state
+                if code is not None:
+                    message.code = code
                 if sources is not None:
                     message.sources = sources
                 if error is not None:

@@ -83,13 +83,15 @@ export function MessageList({
               {message.state === 'error' ? (
                 <span className={styles['oaa-error']} role="alert">
                   <span>{message.error ?? 'Не удалось получить ответ'}</span>
-                  <button
-                    type="button"
-                    className={styles['oaa-retry']}
-                    onClick={() => onRetry(message.id)}
-                  >
-                    Повторить
-                  </button>
+                  {message.retryable ? (
+                    <button
+                      type="button"
+                      className={styles['oaa-retry']}
+                      onClick={() => onRetry(message.id)}
+                    >
+                      Повторить
+                    </button>
+                  ) : null}
                 </span>
               ) : null}
             </div>

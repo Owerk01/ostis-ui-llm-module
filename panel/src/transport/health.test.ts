@@ -5,7 +5,7 @@ import { healthFromMessages } from './health.ts'
 
 const assistant = (over: Record<string, unknown> = {}) => ({
   id: 'm', role: 'assistant' as const, text: 'x', state: 'done' as const,
-  createdAt: '2026-11-18T00:00:00Z', ...over,
+  createdAt: '2026-11-18T00:00:00Z', code: 'ok' as const, retryable: false, ...over,
 })
 
 test('health: no messages means unknown source and null model', () => {

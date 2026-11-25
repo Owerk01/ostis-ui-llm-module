@@ -22,6 +22,7 @@ import {
 } from 'ts-sc-client'
 
 import { resolveClientTimeoutMs } from './timeout.ts'
+import { isRetryable, toOutcomeCode } from './outcome.ts'
 import { parseServiceState, serviceAlive, type ServiceStateSnapshot } from './serviceHealth.ts'
 import { findMessageInResult, type ResultRow } from './actionResult'
 import { isStableDialogId, newDialogId } from './dialogId'
@@ -75,6 +76,7 @@ interface Keynodes {
   nrelValue: ScAddr
   nrelTime: ScAddr
   nrelState: ScAddr
+  nrelMessageCode: ScAddr | null
   nrelSource: ScAddr
   nrelModel: ScAddr
   nrelPromptVersion: ScAddr
@@ -232,6 +234,8 @@ export class ScMemoryTransport implements AssistantTransport {
           text: '',
           state: 'cancelled',
           createdAt: new Date().toISOString(),
+          code: 'cancelled',
+          retryable: false,
         }
       }
       if (!finished) throw new Error('Превышено время ожидания ответа')
@@ -397,6 +401,10 @@ export class ScMemoryTransport implements AssistantTransport {
     const text = (await this.linkValue(message, k.nrelValue)) ?? ''
     const stateValue = await this.linkValue(message, k.nrelState)
     const state = toState(stateValue)
+    const rawCode = k.nrelMessageCode
+      ? await this.linkValue(message, k.nrelMessageCode)
+      : null
+    const code = toOutcomeCode(rawCode)
     const createdAt = (await this.linkValue(message, k.nrelTime)) ?? ''
     const model = await this.linkValue(message, k.nrelModel)
     const promptVersion = await this.linkValue(message, k.nrelPromptVersion)
@@ -410,6 +418,8 @@ export class ScMemoryTransport implements AssistantTransport {
       text,
       state,
       createdAt,
+      code,
+      retryable: isRetryable(code),
       model,
       promptVersion: promptVersion ?? undefined,
       knowledgeSource,
@@ -526,6 +536,7 @@ export class ScMemoryTransport implements AssistantTransport {
       'nrel_ui_value',
       'nrel_ui_message_time',
       'nrel_ui_message_state',
+      'nrel_ui_message_code',
       'nrel_ui_answer_source',
       'nrel_ui_llm_model',
       'nrel_ui_prompt_version',
@@ -544,8 +555,9 @@ export class ScMemoryTransport implements AssistantTransport {
       { id: 'rrel_1', type: searchOnly },
       { id: 'rrel_2', type: searchOnly },
     ])
+    // Код исхода опционален в старой БЗ: без link читаем `ok` как код по умолчанию.
     const missing = Object.entries(resolved)
-      .filter(([, addr]) => !addr.isValid())
+      .filter(([id, addr]) => !addr.isValid() && id !== 'nrel_ui_message_code')
       .map(([id]) => id)
     if (missing.length) {
       throw new Error(
@@ -567,6 +579,9 @@ export class ScMemoryTransport implements AssistantTransport {
       nrelValue: resolved.nrel_ui_value,
       nrelTime: resolved.nrel_ui_message_time,
       nrelState: resolved.nrel_ui_message_state,
+      nrelMessageCode: resolved['nrel_ui_message_code']?.isValid()
+        ? resolved['nrel_ui_message_code']
+        : null,
       nrelSource: resolved.nrel_ui_answer_source,
       nrelModel: resolved.nrel_ui_llm_model,
       nrelPromptVersion: resolved.nrel_ui_prompt_version,

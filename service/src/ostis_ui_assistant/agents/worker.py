@@ -23,6 +23,7 @@ from ..knowledge.service import Cancelled, KnowledgeService
 from ..llm.base import LLMTimeout, LLMUnavailable
 from ..sc import dialog_store
 from ..sc import keynodes as kn
+from ..sc.outcomes import DEFAULT_CODE
 
 if TYPE_CHECKING:
     from ..sc.service_state import ServiceState
@@ -172,6 +173,7 @@ class DialogWorker:
             sources=source_addrs,
             state=kn.STATUS_DONE,
             knowledge_source=result.knowledge_source,
+            code=DEFAULT_CODE,
         )
         finish_action_with_status(job.action, True)
         logger.info(

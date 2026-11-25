@@ -23,6 +23,7 @@ from sc_kpm.utils.action_utils import (
 
 from ..sc import dialog_store
 from ..sc import keynodes as kn
+from ..sc.outcomes import PENDING_CODE
 from .worker import BUSY_MESSAGE, DialogJob, DialogWorker
 
 logger = logging.getLogger(__name__)
@@ -101,6 +102,7 @@ class UiDialogAgent(ScAgentClassic):
                 self._service.prompt_version,
                 state=kn.STATUS_PENDING,
                 knowledge_source="unknown",
+                code=PENDING_CODE,
             )
             # Результат фиксируется сразу: повторная доставка события увидит
             # сообщение и вернёт SKIP, не создавая второй ответ (B0-2).

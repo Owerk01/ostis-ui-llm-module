@@ -1,0 +1,26 @@
+{
+  "relation": "nrel_ui_message_code",
+  "states": ["pending", "streaming", "done", "error", "cancelled"],
+  "defaultCode": "ok",
+  "pendingCode": "pending",
+  "outcomeCodes": [
+    "ok",
+    "busy",
+    "llm_unavailable",
+    "llm_timeout",
+    "invalid_request",
+    "cancelled",
+    "agent_restarted",
+    "schema_missing",
+    "schema_mismatch",
+    "dialog_not_found",
+    "internal"
+  ],
+  "retryableCodes": [
+    "busy",
+    "llm_unavailable",
+    "llm_timeout",
+    "agent_restarted",
+    "internal"
+  ]
+}

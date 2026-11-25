@@ -2,6 +2,21 @@
 
 ## Unreleased
 
+### T5: машиночитаемые коды исхода и флаг повтора
+
+- Агент пишет `nrel_ui_message_code` для каждого assistant-сообщения: pending →
+  `pending`, успех → `ok`, ошибки → `llm_unavailable`, `llm_timeout`, `busy`,
+  `invalid_request`, `cancelled`, `agent_restarted`, `internal`. Полный перечень,
+  включая `schema_missing`, `schema_mismatch`, `dialog_not_found`, зафиксирован
+  в `docs/01_CONTRACTS.md` и новом `contract/identifiers.json`.
+- `AssistantMessage` получил обязательные `code` и `retryable`; transports
+  читают код из БЗ/SSE, старые сообщения без link получают `ok`. `retryable`
+  вычисляется из кода, редактор показывает «Повторить» только по флагу.
+- `ScMemoryTransport.readMessage()` поддерживает отсутствующий relation code
+  как обратную совместимость с прежней БЗ.
+- Тесты: все коды из контракта, `llm_unavailable`/`llm_timeout`/`busy`/
+  `agent_restarted`, код `ok` для успеха и SSE-события direct-http.
+
 ### T4: health из узла состояния сервиса и гейт показа чата
 
 - `KnowledgeService.health()` принимает `ServiceState` и возвращает

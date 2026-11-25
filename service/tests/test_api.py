@@ -28,6 +28,8 @@ class FakeService:
             raise LLMTimeout("таймаут")
         if self.mode == "cancelled":
             raise Cancelled
+        if self.mode == "internal":
+            raise RuntimeError("сбой")
         return AnswerResult(
             text=self.text,
             model="qwen3.5:4b",
@@ -101,6 +103,7 @@ def test_ask_streams_meta_delta_done(client: TestClient) -> None:
 
     meta = events[0]["data"]
     assert meta["state"] == "pending"
+    assert meta["code"] == "pending"
     assert meta["message_id"]
     assert meta["dialog_id"]
 
@@ -125,11 +128,14 @@ def test_ask_saves_history(client: TestClient) -> None:
     assert [item["role"] for item in history] == ["user", "assistant"]
     assert history[0]["text"] == "вопрос"
     assert history[1]["state"] == "done"
+    assert history[1]["code"] == "ok"
 
 
 def test_ask_rejects_empty_question(client: TestClient) -> None:
     assert client.post("/ask", json={"question": ""}).status_code == 422
-    assert client.post("/ask", json={"question": "   "}).status_code == 400
+    response = client.post("/ask", json={"question": "   "})
+    assert response.status_code == 400
+    assert response.json()["detail"]["code"] == "invalid_request"
 
 
 def test_ask_reports_llm_unavailable(settings) -> None:
@@ -137,7 +143,10 @@ def test_ask_reports_llm_unavailable(settings) -> None:
     with TestClient(app) as test_client:
         events = ask(test_client)
     assert events[-1]["event"] == "error"
+    assert events[-1]["data"]["code"] == "llm_unavailable"
     assert "Ollama" in events[-1]["data"]["error"]
+    history = test_client.get(f"/history/{events[0]['data']['dialog_id']}").json()
+    assert history[1]["code"] == "llm_unavailable"
 
 
 def test_ask_reports_timeout(settings) -> None:
@@ -145,7 +154,18 @@ def test_ask_reports_timeout(settings) -> None:
     with TestClient(app) as test_client:
         events = ask(test_client)
     assert events[-1]["event"] == "error"
+    assert events[-1]["data"]["code"] == "llm_timeout"
     assert "время ожидания" in events[-1]["data"]["error"]
+    history = test_client.get(f"/history/{events[0]['data']['dialog_id']}").json()
+    assert history[1]["code"] == "llm_timeout"
+
+
+def test_ask_reports_internal_error_code(settings) -> None:
+    app = create_app(settings, service=FakeService(mode="internal"))
+    with TestClient(app) as test_client:
+        events = ask(test_client)
+    assert events[-1]["event"] == "error"
+    assert events[-1]["data"]["code"] == "internal"
 
 
 def test_ask_reports_cancelled(settings) -> None:
@@ -154,6 +174,7 @@ def test_ask_reports_cancelled(settings) -> None:
         events = ask(test_client)
     assert events[-1]["event"] == "cancelled"
     assert events[-1]["data"]["message"]["state"] == "cancelled"
+    assert events[-1]["data"]["message"]["code"] == "cancelled"
 
 
 def test_cancel_unknown_message_returns_false(client: TestClient) -> None:

@@ -28,6 +28,7 @@ from sc_kpm.utils.action_utils import get_action_result
 
 from ..knowledge.identifiers import NEW_CLASSES
 from . import keynodes as kn
+from .outcomes import DEFAULT_CODE, MESSAGE_CODES, PENDING_CODE, normalize_code
 
 logger = logging.getLogger(__name__)
 
@@ -86,6 +87,8 @@ def _append_message(
     knowledge_source: str | None = None,
     code: str | None = None,
 ) -> ScAddr:
+    if code is not None and code not in MESSAGE_CODES:
+        raise ValueError(f"Неизвестный код исхода сообщения: {code}")
     message = generate_node(sc_type.CONST_NODE)
     generate_connector(sc_type.CONST_PERM_POS_ARC, ScKeynodes[role_class], message)
 
@@ -161,7 +164,9 @@ def append_assistant_message(
     sources: list[ScAddr] | None = None,
     state: str = kn.STATUS_DONE,
     knowledge_source: str = "unknown",
+    code: str = PENDING_CODE,
 ) -> ScAddr:
+    """Pending-сообщение сразу получает служебный код `pending`."""
     return _append_message(
         dialog,
         text,
@@ -171,11 +176,12 @@ def append_assistant_message(
         prompt_version=prompt_version,
         sources=sources,
         knowledge_source=knowledge_source,
+        code=code,
     )
 
 
 def append_error_message(
-    dialog: ScAddr, reason: str, *, code: str | None = None
+    dialog: ScAddr, reason: str, *, code: str = "internal"
 ) -> ScAddr:
     return _append_message(
         dialog,
@@ -231,9 +237,11 @@ def complete_assistant_message(
     sources: list[ScAddr] | None = None,
     state: str = kn.STATUS_DONE,
     knowledge_source: str | None = None,
-    code: str | None = None,
+    code: str = DEFAULT_CODE,
 ) -> None:
     """Дописывает pending-сообщение после генерации, не создавая второе сообщение."""
+    if code not in MESSAGE_CODES:
+        raise ValueError(f"Неизвестный код исхода сообщения: {code}")
     _set_link_value(message, "nrel_ui_value", text)
     _set_link_value(message, "nrel_ui_message_state", state)
     if model:
@@ -477,7 +485,7 @@ def read_history(dialog: ScAddr) -> list[dict[str, Any]]:
                     "model": models.get(key),
                     "promptVersion": versions.get(key),
                     "knowledgeSource": sources_map.get(key),
-                    "code": codes.get(key),
+                    "code": normalize_code(codes.get(key)),
                     "sources": sources.get(key, []),
                 },
             )

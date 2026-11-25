@@ -12,5 +12,6 @@ export type {
   AssistantRole,
   AssistantTransport,
   MessageState,
+  OutcomeCode,
   SourceRef,
 } from './transport/types'

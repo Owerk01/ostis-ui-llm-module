@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Composer } from './components/Composer'
 import { errorHint } from './transport/errorHint'
+import { isRetryable, outcomeCodeFromError, PENDING_CODE } from './transport/outcome.ts'
 import { MessageList } from './components/MessageList'
 import { StatusBar, type RequestState } from './components/StatusBar'
 import { cx } from './components/cx'
@@ -112,6 +113,8 @@ export function AssistantPanel({
         text: '',
         state: 'pending',
         createdAt,
+        code: PENDING_CODE,
+        retryable: false,
       }
 
       setMessages((previous) => {
@@ -123,6 +126,8 @@ export function AssistantPanel({
                 role: 'user' as const,
                 text,
                 state: 'done' as const,
+                code: 'ok' as const,
+                retryable: false,
                 createdAt,
               },
             ]
@@ -154,7 +159,14 @@ export function AssistantPanel({
           previous.map((message) => {
             if (message.id !== pendingLocalId) return message
             if (answer.state === 'cancelled') {
-              return { ...message, state: 'cancelled' as const, text: message.text || answer.text }
+              return {
+                ...message,
+                ...answer,
+                state: 'cancelled' as const,
+                code: 'cancelled' as const,
+                retryable: false,
+                text: message.text || answer.text,
+              }
             }
             return {
               ...answer,
@@ -165,10 +177,18 @@ export function AssistantPanel({
         )
       } catch (error) {
         const errorText = describeError(error)
+        const code = outcomeCodeFromError(error)
         setMessages((previous) =>
           previous.map((message) =>
             message.id === pendingLocalId
-              ? { ...message, state: 'error' as const, error: errorText, text: message.text }
+              ? {
+                  ...message,
+                  state: 'error' as const,
+                  code,
+                  retryable: isRetryable(code),
+                  error: errorText,
+                  text: message.text,
+                }
               : message,
           ),
         )
@@ -194,7 +214,14 @@ export function AssistantPanel({
     setStartedAt(null)
     setMessages((previous) =>
       previous.map((message) =>
-        message.id === current ? { ...message, state: 'cancelled' as const } : message,
+        message.id === current
+          ? {
+              ...message,
+              state: 'cancelled' as const,
+              code: 'cancelled' as const,
+              retryable: false,
+            }
+          : message,
       ),
     )
     void transport.cancel(current)

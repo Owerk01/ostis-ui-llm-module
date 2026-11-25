@@ -8,7 +8,8 @@ from unittest.mock import MagicMock
 from ostis_ui_assistant.agents import worker as worker_module
 from ostis_ui_assistant.agents.worker import DialogJob, DialogWorker
 from ostis_ui_assistant.knowledge.service import AnswerResult
-from ostis_ui_assistant.llm.base import LLMTimeout
+from ostis_ui_assistant.llm.base import LLMTimeout, LLMUnavailable
+from ostis_ui_assistant.sc.outcomes import is_retryable
 
 
 def _job() -> DialogJob:
@@ -57,8 +58,23 @@ def test_success_writes_answer_to_same_message(monkeypatch) -> None:
     assert complete.call_args.args[0] is job.message
     assert complete.call_args.args[1] == "ответ"
     assert kwargs["state"] == "done"
+    assert kwargs["code"] == "ok"
     assert kwargs["knowledge_source"] == "kb"
     finish.assert_called_once_with(job.action, True)
+
+
+def test_llm_unavailable_is_retryable(monkeypatch) -> None:
+    complete, finish = _patch_common(monkeypatch)
+    service = MagicMock()
+    service.answer.side_effect = LLMUnavailable("нет соединения")
+    job = _job()
+
+    DialogWorker(service, _settings())._process(job)
+
+    code = complete.call_args.kwargs["code"]
+    assert code == "llm_unavailable"
+    assert is_retryable(code) is True
+    finish.assert_called_once_with(job.action, False)
 
 
 def test_timeout_marks_message_error_and_action_unsuccessful(monkeypatch) -> None:

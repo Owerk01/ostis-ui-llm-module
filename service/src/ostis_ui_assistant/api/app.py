@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 from ..config import Settings
 from ..knowledge.service import Cancelled, KnowledgeService
 from ..llm.base import LLMTimeout, LLMUnavailable
+from ..sc.outcomes import PENDING_CODE
 from .sse import (
     CancelRegistry,
     DialogStore,
@@ -99,7 +100,10 @@ def create_app(
     def ask(request: AskRequest) -> StreamingResponse:
         question = request.question.strip()
         if not question:
-            raise HTTPException(status_code=400, detail="Пустой запрос")
+            raise HTTPException(
+                status_code=400,
+                detail={"code": "invalid_request", "error": "Пустой запрос"},
+            )
 
         if request.dialog_id:
             dialog_id = request.dialog_id
@@ -119,7 +123,12 @@ def create_app(
         def generate() -> Iterator[str]:
             yield sse_event(
                 "meta",
-                {"message_id": assistant.id, "dialog_id": dialog_id, "state": "pending"},
+                {
+                    "message_id": assistant.id,
+                    "dialog_id": dialog_id,
+                    "state": "pending",
+                    "code": PENDING_CODE,
+                },
             )
             try:
                 result = knowledge.answer(question, cancel_event)
@@ -128,6 +137,7 @@ def create_app(
                     assistant.id,
                     text=result.text,
                     state="done",
+                    code="ok",
                     sources=result.sources,
                 )
                 for chunk in split_for_stream(result.text):
@@ -154,7 +164,12 @@ def create_app(
                 )
             except Cancelled:
                 dialogs.update_assistant(
-                    dialog_id, assistant.id, text="", state="cancelled", error=None
+                    dialog_id,
+                    assistant.id,
+                    text="",
+                    state="cancelled",
+                    code="cancelled",
+                    error=None,
                 )
                 message = next(
                     (
@@ -169,31 +184,61 @@ def create_app(
                 error_text = "Языковая модель недоступна. Проверьте, что Ollama запущена"
                 logger.warning("LLM недоступна при обработке запроса %s", assistant.id)
                 dialogs.update_assistant(
-                    dialog_id, assistant.id, text="", state="error", error=error_text
+                    dialog_id,
+                    assistant.id,
+                    text="",
+                    state="error",
+                    code="llm_unavailable",
+                    error=error_text,
                 )
                 yield sse_event(
                     "error",
-                    {"message_id": assistant.id, "error": error_text, "state": "error"},
+                    {
+                        "message_id": assistant.id,
+                        "error": error_text,
+                        "state": "error",
+                        "code": "llm_unavailable",
+                    },
                 )
             except LLMTimeout:
                 error_text = "Превышено время ожидания ответа"
                 logger.warning("Таймаут LLM при обработке запроса %s", assistant.id)
                 dialogs.update_assistant(
-                    dialog_id, assistant.id, text="", state="error", error=error_text
+                    dialog_id,
+                    assistant.id,
+                    text="",
+                    state="error",
+                    code="llm_timeout",
+                    error=error_text,
                 )
                 yield sse_event(
                     "error",
-                    {"message_id": assistant.id, "error": error_text, "state": "error"},
+                    {
+                        "message_id": assistant.id,
+                        "error": error_text,
+                        "state": "error",
+                        "code": "llm_timeout",
+                    },
                 )
             except Exception as exc:  # сервис не должен ронять поток
                 logger.exception("Ошибка обработки запроса: %s", exc)
                 error_text = "Не удалось получить ответ. Подробности в журнале сервиса"
                 dialogs.update_assistant(
-                    dialog_id, assistant.id, text="", state="error", error=error_text
+                    dialog_id,
+                    assistant.id,
+                    text="",
+                    state="error",
+                    code="internal",
+                    error=error_text,
                 )
                 yield sse_event(
                     "error",
-                    {"message_id": assistant.id, "error": error_text, "state": "error"},
+                    {
+                        "message_id": assistant.id,
+                        "error": error_text,
+                        "state": "error",
+                        "code": "internal",
+                    },
                 )
             finally:
                 cancels.remove(assistant.id)

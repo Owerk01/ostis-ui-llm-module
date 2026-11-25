@@ -42,8 +42,12 @@ action --nrel_result--> structure --perm-pos--> concept_ui_assistant_message
 
 - `nrel_ui_value` — текст;
 - `nrel_ui_message_state` — состояние;
-- `nrel_ui_message_code` — код (`busy`, `llm_unavailable`, `llm_timeout`,
-  `invalid_request`, `cancelled`, `agent_restarted`, `internal`);
+- `nrel_ui_message_code` — `pending` до ответа, затем один из
+  `ok`, `busy`, `llm_unavailable`, `llm_timeout`, `invalid_request`, `cancelled`,
+  `agent_restarted`, `schema_missing`, `schema_mismatch`, `dialog_not_found`, `internal`.
+  Список продублирован в `contract/identifiers.json`. Транспорт заполняет
+  `AssistantMessage.code` и `retryable` (только для `busy`, `llm_unavailable`,
+  `llm_timeout`, `agent_restarted`, `internal`); «Повторить» показываем по флагу;
 - `nrel_ui_llm_model`, `nrel_ui_prompt_version`, `nrel_ui_knowledge_source`;
 - `nrel_ui_answer_source` — узлы-основания.
 
