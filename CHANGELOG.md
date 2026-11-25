@@ -2,6 +2,18 @@
 
 ## Unreleased
 
+### T6: типизированные исходы ожидания и дочитка позднего результата
+
+- Введены `AssistantTimeout` (с `actionId`/`dialogId`), `AssistantCancelled`,
+  `AssistantSchemaMissing`, `AssistantDialogNotFound`, `AssistantBusy` вместо
+  строковых `Error`; коды зафиксированы в `contract/identifiers.json`.
+- Новый `AssistantTransport.readActionResult(actionId)` читает готовый результат
+  по actions в sc-памяти и по истории в direct-http, не отправляя вопрос повторно.
+- При таймауте панель оставляет одно pending-сообщение, показывает «Ответ ещё
+  готовится» и кнопку «Проверить»; найденный результат заменяет это сообщение.
+- Мягкая отмена не создаёт второй ход; покрыто тестами `test_late_result_recoverable`
+  и проверкой one-turn в direct-http. Клиентский таймаут настроен через конфигурацию.
+
 ### T5: машиночитаемые коды исхода и флаг повтора
 
 - Агент пишет `nrel_ui_message_code` для каждого assistant-сообщения: pending →

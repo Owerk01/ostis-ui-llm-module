@@ -22,5 +22,12 @@
     "llm_timeout",
     "agent_restarted",
     "internal"
-  ]
+  ],
+  "transportErrors": {
+    "timeout": "assistant_timeout",
+    "cancelled": "assistant_cancelled",
+    "schemaMissing": "assistant_schema_missing",
+    "dialogNotFound": "dialog_not_found",
+    "busy": "assistant_busy"
+  }
 }

@@ -109,6 +109,19 @@ def test_event_handler_returns_fast(monkeypatch) -> None:
     assert dialog_agent.dialog_store.append_assistant_message.call_args.kwargs["code"] == "pending"
 
 
+def test_single_turn_per_action(monkeypatch) -> None:
+    """Одно действие создаёт ровно одно user- и одно assistant-сообщение."""
+    service = SlowService()
+    worker = FakeWorker()
+    action = patch_sc(monkeypatch)
+    agent = make_agent(service, worker)
+
+    agent.on_event(MagicMock(), MagicMock(), action)
+
+    assert dialog_agent.dialog_store.append_user_message.call_count == 1
+    assert dialog_agent.dialog_store.append_assistant_message.call_count == 1
+
+
 def test_queue_overflow_finishes_with_busy(monkeypatch) -> None:
     service = SlowService()
     worker = FakeWorker(accept=False)

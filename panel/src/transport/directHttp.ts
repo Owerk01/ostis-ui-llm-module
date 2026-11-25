@@ -6,21 +6,32 @@
  */
 
 import {
+  AssistantBusy,
+  AssistantCancelled,
+  AssistantTimeout,
+  transportErrorFromCode,
+} from './errors.ts'
+import {
   codedError,
   isRetryable,
   toOutcomeCode,
   type OutcomeCode,
 } from './outcome.ts'
+import { resolveClientTimeoutMs } from './timeout.ts'
 import type {
   AssistantHealth,
   AssistantMessage,
   AssistantTransport,
   MessageState,
   SourceRef,
-} from './types'
-import { DialogNotFoundError } from './types'
+} from './types.ts'
+import { DialogNotFoundError } from './types.ts'
 
 export const DEFAULT_BASE_URL = 'http://127.0.0.1:8770'
+
+function localActionId(): string {
+  return `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+}
 
 interface SseEvent {
   event: string
@@ -104,16 +115,24 @@ export class DirectHttpTransport implements AssistantTransport {
 
   private readonly baseUrl: string
   private readonly fetchImpl: typeof fetch
+  private readonly clientTimeoutMs: number
+  /** actionId (или message_id из SSE) → диалог, откуда его дочитать. */
+  private readonly actionDialogs = new Map<string, string>()
   private active: {
     controller: AbortController
     messageId?: string
     code: OutcomeCode
   } | null = null
 
-  constructor(baseUrl: string = DEFAULT_BASE_URL, fetchImpl: typeof fetch = fetch) {
+  constructor(
+    baseUrl: string = DEFAULT_BASE_URL,
+    fetchImpl: typeof fetch = fetch,
+    clientTimeoutMs?: number,
+  ) {
     this.baseUrl = baseUrl.replace(/\/+$/, '')
     // fetch нельзя вызывать как метод объекта: в браузере это даёт Illegal invocation.
     this.fetchImpl = fetchImpl.bind(globalThis)
+    this.clientTimeoutMs = resolveClientTimeoutMs(clientTimeoutMs)
   }
 
   async health(): Promise<AssistantHealth> {
@@ -196,6 +215,14 @@ export class DirectHttpTransport implements AssistantTransport {
     }
     this.active = active
 
+    const actionId = localActionId()
+    this.rememberAction(actionId, dialogId)
+    let timedOut = false
+    const timeoutTimer = globalThis.setTimeout(() => {
+      timedOut = true
+      controller.abort()
+    }, this.clientTimeoutMs)
+
     const onExternalAbort = () => controller.abort()
     if (signal) {
       if (signal.aborted) controller.abort()
@@ -212,8 +239,9 @@ export class DirectHttpTransport implements AssistantTransport {
 
       if (!response.ok) {
         if (response.status === 404) throw new DialogNotFoundError(dialogId)
+        if (response.status === 503) throw new AssistantBusy()
         const { detail, code } = await this.readError(response)
-        throw codedError(detail, code)
+        throw transportErrorFromCode(code, { dialogId }) ?? codedError(detail, code)
       }
       if (!response.body) throw new Error('Сервис не вернул поток ответа')
 
@@ -224,7 +252,10 @@ export class DirectHttpTransport implements AssistantTransport {
         if (!payload) continue
 
         if (sse.event === 'meta') {
-          if (typeof payload.message_id === 'string') active.messageId = payload.message_id
+          if (typeof payload.message_id === 'string') {
+            active.messageId = payload.message_id
+            this.rememberAction(payload.message_id, dialogId)
+          }
           active.code = toOutcomeCode(payload.code, active.code)
         } else if (sse.event === 'delta') {
           const text = typeof payload.text === 'string' ? payload.text : ''
@@ -235,27 +266,48 @@ export class DirectHttpTransport implements AssistantTransport {
             active.code = finalMessage.code
           }
         } else if (sse.event === 'cancelled') {
-          const message = payload.message as ServerMessage | undefined
-          finalMessage = message
-            ? { ...toMessage(message), state: 'cancelled', code: 'cancelled', retryable: false }
-            : this.localMessage(active.messageId, 'cancelled', 'cancelled')
+          // Мягкая отмена: история уже содержит одно assistant-сообщение.
+          throw new AssistantCancelled(active.messageId)
         } else if (sse.event === 'error') {
           const error = typeof payload.error === 'string' ? payload.error : 'Ошибка сервиса'
+          const rawCode = typeof payload.code === 'string' ? payload.code : ''
           active.code = toOutcomeCode(payload.code, 'internal')
-          throw codedError(error, active.code)
+          throw transportErrorFromCode(rawCode, {
+            actionId: active.messageId,
+            dialogId,
+          }) ?? codedError(error, active.code)
         }
       }
 
       if (finalMessage) return finalMessage
       return this.localMessage(active.messageId, 'done', active.code)
     } catch (error) {
+      if (timedOut) throw new AssistantTimeout(active.messageId ?? actionId, dialogId)
       if (this.isAbort(error)) {
-        return this.localMessage(active.messageId, 'cancelled', 'cancelled')
+        throw new AssistantCancelled(active.messageId ?? actionId)
       }
       throw error instanceof Error ? error : codedError(String(error), active.code)
     } finally {
+      globalThis.clearTimeout(timeoutTimer)
       signal?.removeEventListener('abort', onExternalAbort)
       if (this.active === active) this.active = null
+    }
+  }
+
+  /** Быстрая проверка готового ответа: новый вопрос не отправляется. */
+  async readActionResult(actionId: string): Promise<AssistantMessage | null> {
+    const dialogId = this.actionDialogs.get(actionId)
+    if (!dialogId) return null
+    const message = (await this.history(dialogId)).find((item) => item.id === actionId) ?? null
+    if (message) this.actionDialogs.delete(actionId)
+    return message
+  }
+
+  private rememberAction(actionId: string, dialogId: string): void {
+    this.actionDialogs.set(actionId, dialogId)
+    if (this.actionDialogs.size > 64) {
+      const oldest = this.actionDialogs.keys().next().value
+      if (oldest) this.actionDialogs.delete(oldest)
     }
   }
 

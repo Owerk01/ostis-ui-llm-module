@@ -12,6 +12,7 @@ import {
   ScAddr,
   ScClient,
   ScConstruction,
+  ScEventSubscription,
   ScEventSubscriptionParams,
   ScEventType,
   ScHelper,
@@ -22,6 +23,8 @@ import {
 } from 'ts-sc-client'
 
 import { resolveClientTimeoutMs } from './timeout.ts'
+import { AssistantBusy, AssistantSchemaMissing } from './errors.ts'
+import { LateResult } from './lateResult.ts'
 import { isRetryable, toOutcomeCode } from './outcome.ts'
 import { parseServiceState, serviceAlive, type ServiceStateSnapshot } from './serviceHealth.ts'
 import { findMessageInResult, type ResultRow } from './actionResult'
@@ -57,9 +60,7 @@ function toState(value: string | null): MessageState {
 }
 
 interface ActiveRequest {
-  action: ScAddr | null
-  cancelled: boolean
-  wake?: () => void
+  waiter: LateResult<AssistantMessage>
 }
 
 interface Keynodes {
@@ -213,69 +214,86 @@ export class ScMemoryTransport implements AssistantTransport {
     this.dialogId = dialogId
 
     const action = await this.createAction(k, dialog, question)
-    const active: ActiveRequest = { action, cancelled: false }
+    const actionId = String(action.value)
+    const waiter = new LateResult<AssistantMessage>({
+      actionId,
+      dialogId,
+      isFinished: () => this.isFinished(k, action),
+      readResult: () => this.finishedMessage(k, action),
+      pollIntervalMs: POLL_INTERVAL_MS,
+    })
+    const active: ActiveRequest = { waiter }
     this.active = active
 
-    const onExternalAbort = () => {
-      active.cancelled = true
-      active.wake?.()
-    }
+    const onExternalAbort = () => waiter.wake()
     if (signal) {
       if (signal.aborted) onExternalAbort()
       else signal.addEventListener('abort', onExternalAbort, { once: true })
     }
 
+    let subscription: Promise<ScEventSubscription> | null = null
     try {
-      const finished = await this.waitForFinish(action, active)
-      if (active.cancelled) {
-        return {
-          id: String(action.value),
-          role: 'assistant',
-          text: '',
-          state: 'cancelled',
-          createdAt: new Date().toISOString(),
-          code: 'cancelled',
-          retryable: false,
-        }
-      }
-      if (!finished) throw new Error('Превышено время ожидания ответа')
+      subscription = this.client
+        .createElementaryEventSubscriptions(
+          new ScEventSubscriptionParams(
+            action,
+            ScEventType.AfterGenerateIncomingArc,
+            () => waiter.poke(),
+          ),
+        )
+        .then((items) => items[0])
 
-      const result = await this.helper.getResult(action)
-      if (!result?.isValid()) {
-        throw new Error('Агент завершил действие, но результат в БЗ не оформлен')
-      }
-      const template = new ScTemplate()
-      template.triple(result, ScType.VarPermPosArc, [ScType.Unknown, '_element'])
-      const rows = (await this.client.searchByTemplate(template)) as unknown as ResultRow[]
-      const messageAddr = await findMessageInResult(
-        rows,
-        async (addr) => {
-          const template = new ScTemplate()
-          template.triple(k.assistantMessage, ScType.VarPermPosArc, addr as ScAddr)
-          return (await this.client.searchByTemplate(template)).length > 0
-        },
-      )
-      if (!messageAddr) {
-        throw new Error('Агент завершил действие, но результат в БЗ не оформлен')
-      }
-      const last = await this.readMessage(messageAddr as ScAddr, k)
-
+      const last = await waiter.wait(this.clientTimeoutMs)
       onDelta?.(last.text)
-      if (last.state === 'error') {
-        return { ...last, error: last.text }
-      }
+      if (last.code === 'busy') throw new AssistantBusy()
+      if (last.state === 'error') return { ...last, error: last.text }
       return last
     } finally {
       signal?.removeEventListener('abort', onExternalAbort)
       if (this.active === active) this.active = null
+      if (subscription) {
+        void subscription
+          .then((sub) => this.client.destroyElementaryEventSubscriptions(sub.id))
+          .catch(() => undefined)
+      }
     }
   }
 
   async cancel(_messageId: string): Promise<void> {
-    if (!this.active) return
-    // Мягкая отмена: панель перестаёт ждать, агент допишет ответ в БЗ.
-    this.active.cancelled = true
-    this.active.wake?.()
+    // Мягкая отмена: перестаём ждать, но конструкции и сообщения в БЗ не трогаем.
+    this.active?.waiter.wake()
+  }
+
+  async readActionResult(actionId: string): Promise<AssistantMessage | null> {
+    const value = Number(actionId)
+    const action = Number.isFinite(value) ? new ScAddr(value) : null
+    if (!action || !action.isValid()) return null
+
+    const k = await this.keynodes()
+    const waiter = new LateResult<AssistantMessage>({
+      actionId,
+      isFinished: () => this.isFinished(k, action),
+      readResult: () => this.finishedMessage(k, action),
+      pollIntervalMs: POLL_INTERVAL_MS,
+    })
+    return waiter.readActionResult()
+  }
+
+  /** Готовое сообщение из результата действия; без повторной отправки вопроса. */
+  private async finishedMessage(k: Keynodes, action: ScAddr): Promise<AssistantMessage | null> {
+    const result = await this.helper.getResult(action)
+    if (!result?.isValid()) return null
+
+    const template = new ScTemplate()
+    template.triple(result, ScType.VarPermPosArc, [ScType.Unknown, '_element'])
+    const rows = (await this.client.searchByTemplate(template)) as unknown as ResultRow[]
+    const messageAddr = await findMessageInResult(rows, async (addr) => {
+      const assistantTemplate = new ScTemplate()
+      assistantTemplate.triple(k.assistantMessage, ScType.VarPermPosArc, addr as ScAddr)
+      return (await this.client.searchByTemplate(assistantTemplate)).length > 0
+    })
+    if (!messageAddr) return null
+    return this.readMessage(messageAddr as ScAddr, k)
   }
 
   // --- создание конструкций ---
@@ -335,57 +353,6 @@ export class ScMemoryTransport implements AssistantTransport {
     construction.generateConnector(ScType.ConstPermPosArc, source, target, '_arc')
     construction.generateConnector(ScType.ConstPermPosArc, relation, '_arc')
     await this.client.generateElements(construction)
-  }
-
-  // --- ожидание результата ---
-
-  private async waitForFinish(
-    action: ScAddr,
-    active: ActiveRequest,
-    timeoutMs: number = this.clientTimeoutMs,
-  ): Promise<boolean> {
-    const k = await this.keynodes()
-    let settled = false
-
-    return new Promise<boolean>((resolve) => {
-      const finish = (result: boolean) => {
-        if (settled) return
-        settled = true
-        globalThis.clearInterval(timer)
-        globalThis.clearTimeout(timeout)
-        active.wake = undefined
-        void subscription.then((sub) =>
-          this.client.destroyElementaryEventSubscriptions(sub.id).catch(() => undefined),
-        )
-        resolve(result)
-      }
-
-      const check = async () => {
-        if (settled) return
-        if (active.cancelled) {
-          finish(false)
-          return
-        }
-        try {
-          if (await this.isFinished(k, action)) finish(true)
-        } catch {
-          // временная ошибка соединения — повторим на следующем тике
-        }
-      }
-
-      const subscription = this.client
-        .createElementaryEventSubscriptions(
-          new ScEventSubscriptionParams(action, ScEventType.AfterGenerateIncomingArc, () => {
-            void check()
-          }),
-        )
-        .then((items) => items[0])
-
-      const timer = globalThis.setInterval(() => void check(), POLL_INTERVAL_MS)
-      const timeout = globalThis.setTimeout(() => finish(false), timeoutMs)
-      active.wake = () => finish(false)
-      void check()
-    })
   }
 
   private async isFinished(k: Keynodes, action: ScAddr): Promise<boolean> {
@@ -560,9 +527,7 @@ export class ScMemoryTransport implements AssistantTransport {
       .filter(([id, addr]) => !addr.isValid() && id !== 'nrel_ui_message_code')
       .map(([id]) => id)
     if (missing.length) {
-      throw new Error(
-        `Схема ассистента не загружена в БЗ: ${missing.join(', ')}. Выполните make kb-load`,
-      )
+      throw new AssistantSchemaMissing(missing)
     }
 
     this.keynodesCache = {

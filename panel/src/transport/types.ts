@@ -5,6 +5,7 @@
  * или по HTTP (отладочный). Оба транспорта обязаны реализовать этот интерфейс.
  */
 
+import { AssistantDialogNotFound } from './errors.ts'
 import type { OutcomeCode } from './outcome.ts'
 
 export type AssistantRole = 'user' | 'assistant'
@@ -75,19 +76,26 @@ export interface AssistantTransport {
     signal?: AbortSignal,
   ): Promise<AssistantMessage>
   cancel(messageId: string): Promise<void>
+  /**
+   * Дочитывает уже завершённое действие по `actionId` из `AssistantTimeout`.
+   * Ни при каких условиях не отправляет вопрос повторно; `null`, если действие
+   * ещё не завершено/результат не оформлен.
+   */
+  readActionResult(actionId: string): Promise<AssistantMessage | null>
 }
 
 /** Код ошибки: диалог с переданным id не найден в БЗ. */
 export const DIALOG_NOT_FOUND_ERROR = 'dialog_not_found'
 
-/** Типизированная ошибка неизвестного диалога: `ask()` не должен подменять диалог. */
-export class DialogNotFoundError extends Error {
-  readonly code = DIALOG_NOT_FOUND_ERROR
-  readonly dialogId: string
+/**
+ * Обратная совместимость: прежнее имя ошибки неизвестного диалога.
+ * Теперь это `AssistantDialogNotFound` — один из типизированных исходов.
+ */
+export class DialogNotFoundError extends AssistantDialogNotFound {
+  override readonly code = DIALOG_NOT_FOUND_ERROR
 
   constructor(dialogId: string) {
-    super(`dialog_not_found: диалог ${dialogId} не найден`)
+    super(dialogId)
     this.name = 'DialogNotFoundError'
-    this.dialogId = dialogId
   }
 }

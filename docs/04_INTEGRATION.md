@@ -55,6 +55,16 @@ action --nrel_result--> structure --perm-pos--> concept_ui_assistant_message
 `pending` до завершения генерации. После `action_finished` сообщение уже
 содержит финальный текст и состояние.
 
+Если клиентский таймаут истёк раньше агента, `ask()` бросает
+`AssistantTimeout` с `actionId` (код `assistant_timeout` в
+`contract/identifiers.json`). Панель показывает «Ответ ещё готовится» и кнопку
+«Проверить»; обработчик вызывает `transport.readActionResult(actionId)` и
+заменяет то же самое pending-сообщение готовым — повторный вопрос не шлётся и
+вторую пару сообщений не создаёт. Остальные исходы ожидания тоже типизированы:
+`AssistantCancelled`, `AssistantSchemaMissing`, `AssistantDialogNotFound`,
+`AssistantBusy`. Мягкая отмена не удаляет конструкции в БЗ: на ход по-прежнему
+одно user- и одно assistant-сообщение.
+
 ## Таймауты и потоки
 
 | Параметр | Значение | Переменная |

@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 
 import { Composer } from './components/Composer'
 import { errorHint } from './transport/errorHint'
+import { AssistantCancelled, AssistantTimeout } from './transport/errors.ts'
 import { isRetryable, outcomeCodeFromError, PENDING_CODE } from './transport/outcome.ts'
 import { MessageList } from './components/MessageList'
 import { StatusBar, type RequestState } from './components/StatusBar'
@@ -32,6 +33,12 @@ function localId(prefix: string): string {
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
 }
 
+interface LateAction {
+  actionId: string
+  dialogId: string
+  messageId: string
+}
+
 function describeError(error: unknown): string {
   if (error instanceof Error && error.message) return error.message
   return 'Не удалось получить ответ'
@@ -52,6 +59,9 @@ export function AssistantPanel({
   const [pendingId, setPendingId] = useState<string | null>(null)
   const [startedAt, setStartedAt] = useState<number | null>(null)
   const [now, setNow] = useState(() => performance.now())
+  const [lateAction, setLateAction] = useState<LateAction | null>(null)
+  const [checkingLate, setCheckingLate] = useState(false)
+  const [lateError, setLateError] = useState<string | null>(null)
 
   const activeRequest = useRef<string | null>(null)
   const abortRef = useRef<AbortController | null>(null)
@@ -80,6 +90,8 @@ export function AssistantPanel({
         const history = await transport.history(nextDialog)
         if (!alive) return
         setMessages(history)
+        setLateAction(null)
+        setLateError(null)
         setInitError(null)
       } catch (error) {
         if (alive) setInitError(describeError(error))
@@ -176,22 +188,56 @@ export function AssistantPanel({
           }),
         )
       } catch (error) {
-        const errorText = describeError(error)
-        const code = outcomeCodeFromError(error)
-        setMessages((previous) =>
-          previous.map((message) =>
-            message.id === pendingLocalId
-              ? {
-                  ...message,
-                  state: 'error' as const,
-                  code,
-                  retryable: isRetryable(code),
-                  error: errorText,
-                  text: message.text,
-                }
-              : message,
-          ),
-        )
+        if (error instanceof AssistantTimeout) {
+          // Ответ может появиться позже: сохраняем actionId и предлагаем проверить,
+          // но не отправляем вопрос повторно.
+          setLateAction({ actionId: error.actionId, dialogId, messageId: pendingLocalId })
+          setLateError(null)
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.id === pendingLocalId
+                ? {
+                    ...message,
+                    state: 'pending' as const,
+                    code: PENDING_CODE,
+                    retryable: false,
+                    text: message.text || 'Ответ ещё готовится',
+                  }
+                : message,
+            ),
+          )
+        } else if (error instanceof AssistantCancelled) {
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.id === pendingLocalId
+                ? {
+                    ...message,
+                    state: 'cancelled' as const,
+                    code: 'cancelled' as const,
+                    retryable: false,
+                    text: message.text,
+                  }
+                : message,
+            ),
+          )
+        } else {
+          const errorText = describeError(error)
+          const code = outcomeCodeFromError(error)
+          setMessages((previous) =>
+            previous.map((message) =>
+              message.id === pendingLocalId
+                ? {
+                    ...message,
+                    state: 'error' as const,
+                    code,
+                    retryable: isRetryable(code),
+                    error: errorText,
+                    text: message.text,
+                  }
+                : message,
+            ),
+          )
+        }
         void refreshHealth()
       } finally {
         if (activeRequest.current === pendingLocalId) {
@@ -245,6 +291,32 @@ export function AssistantPanel({
     },
     [messages, run],
   )
+
+  const checkLate = useCallback(async () => {
+    const late = lateAction
+    if (!late || checkingLate) return
+    setCheckingLate(true)
+    setLateError(null)
+    try {
+      const ready = await transport.readActionResult(late.actionId)
+      if (!ready) {
+        setLateError('Ответ ещё не готов — проверьте позже.')
+        return
+      }
+      setMessages((previous) =>
+        previous.map((message) =>
+          message.id === late.messageId
+            ? { ...ready, id: message.id, createdAt: message.createdAt }
+            : message,
+        ),
+      )
+      setLateAction(null)
+    } catch (error) {
+      setLateError(describeError(error))
+    } finally {
+      setCheckingLate(false)
+    }
+  }, [checkingLate, lateAction, transport])
 
   const requestState: RequestState = pendingId
     ? 'pending'
@@ -302,6 +374,25 @@ export function AssistantPanel({
       {initError || healthError ? (
         <div className={cx(styles['oaa-banner'], styles['oaa-banner-error'])} role="alert">
           {initError ?? healthError}. {errorHint(transport.kind)}.
+        </div>
+      ) : null}
+
+      {lateAction ? (
+        <div className={styles['oaa-banner']} role="status">
+          <span>Ответ ещё готовится.</span>
+          <button
+            type="button"
+            className={styles['oaa-check']}
+            disabled={checkingLate}
+            onClick={() => void checkLate()}
+          >
+            {checkingLate ? 'Проверяем…' : 'Проверить'}
+          </button>
+          {lateError ? (
+            <span className={styles['oaa-late-error']} role="alert">
+              {lateError}
+            </span>
+          ) : null}
         </div>
       ) : null}
 

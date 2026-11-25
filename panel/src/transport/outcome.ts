@@ -47,8 +47,10 @@ export function isRetryable(code: OutcomeCode): boolean {
 
 /** Код из типизированной/сетевой ошибки; неизвестная ошибка — internal. */
 export function outcomeCodeFromError(error: unknown): OutcomeCode {
-  if (error && typeof error === 'object' && 'code' in error) {
-    return toOutcomeCode((error as { code: unknown }).code, 'internal')
+  if (error && typeof error === 'object') {
+    const record = error as { outcome?: unknown; code?: unknown }
+    if (record.outcome !== undefined) return toOutcomeCode(record.outcome, 'internal')
+    if (record.code !== undefined) return toOutcomeCode(record.code, 'internal')
   }
   return 'internal'
 }
