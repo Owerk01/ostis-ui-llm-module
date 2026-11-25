@@ -97,11 +97,16 @@ if (!health.llm.reachable) {
   throw new Error('Агент диалога не запущен: выполните make agent')
 }
 
-const dialogId = await transport.ensureDialog()
+// Id диалога хранит редактор (sessionStorage, ключ dialogId:<interfaceId>).
+// Модуль хранит только БЗ, поэтому после F5 диалог восстанавливается через id.
+const dialogId = await transport.ensureDialog(savedDialogId)
 const answer = await transport.ask(dialogId, 'Что такое concept_ui_button?')
 // answer.state: pending | done | error | cancelled
 // answer.text — финальный текст, answer.sources — основания
 ```
+
+Кнопка «Новый диалог» создаёт свежий id (например, через
+`transport.ensureDialog()` без аргумента) и переводит панель в режим создания.
 
 Панель ждёт `action_finished` не дольше 30 с. `pending`-сообщение доступно
 сразу после приёма запроса, поэтому индикатор обработки можно показывать до

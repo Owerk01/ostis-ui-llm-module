@@ -49,12 +49,9 @@ class DialogStore:
             self._dialogs[dialog_id] = []
         return dialog_id
 
-    def ensure_dialog(self, dialog_id: str | None) -> str:
-        if not dialog_id:
-            return self.create_dialog()
+    def exists(self, dialog_id: str) -> bool:
         with self._lock:
-            self._dialogs.setdefault(dialog_id, [])
-        return dialog_id
+            return dialog_id in self._dialogs
 
     def history(self, dialog_id: str) -> list[dict[str, Any]]:
         with self._lock:

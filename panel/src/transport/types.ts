@@ -38,7 +38,12 @@ export interface AssistantHealth {
 export interface AssistantTransport {
   readonly kind: 'direct-http' | 'sc-memory'
   health(): Promise<AssistantHealth>
-  ensureDialog(): Promise<string> // id диалога
+  /**
+   * Без аргумента создаёт новый диалог; с `dialogId` открывает существующий
+   * (по `nrel_ui_id`). Невалидный/ненайденный id — типизированная ошибка
+   * `DialogNotFoundError`, новый диалог не создаётся молча.
+   */
+  ensureDialog(dialogId?: string): Promise<string>
   history(dialogId: string): Promise<AssistantMessage[]>
   ask(
     dialogId: string,
@@ -47,4 +52,19 @@ export interface AssistantTransport {
     signal?: AbortSignal,
   ): Promise<AssistantMessage>
   cancel(messageId: string): Promise<void>
+}
+
+/** Код ошибки: диалог с переданным id не найден в БЗ. */
+export const DIALOG_NOT_FOUND_ERROR = 'dialog_not_found'
+
+/** Типизированная ошибка неизвестного диалога: `ask()` не должен подменять диалог. */
+export class DialogNotFoundError extends Error {
+  readonly code = DIALOG_NOT_FOUND_ERROR
+  readonly dialogId: string
+
+  constructor(dialogId: string) {
+    super(`dialog_not_found: диалог ${dialogId} не найден`)
+    this.name = 'DialogNotFoundError'
+    this.dialogId = dialogId
+  }
 }

@@ -2,6 +2,25 @@
 
 ## Unreleased
 
+### T2: диалог восстанавливается после F5 и не создаётся молча
+
+- Контракт `AssistantTransport` изменён: `ensureDialog(dialogId?: string): Promise<string>`.
+  Без id — создать новый диалог; с id — открыть существующий (`nrel_ui_id`);
+  невалидный/ненайденный id — `DialogNotFoundError` (`dialog_not_found`), создание
+  нового диалога не выполняется молча.
+- `ask(dialogId, …)` больше не подменяет диалог: неизвестный id — типизированная
+  ошибка `DialogNotFoundError`; ошибка уходит в UI как «диалог не найден».
+- Сервис direct-http: добавлен `GET /dialog/{dialog_id}` (`exists`); `POST /ask`
+  с неизвестным `dialog_id` отвечает `404 dialog_not_found`. Без `dialog_id` —
+  как раньше, создаётся новый диалог.
+- Панель: `AssistantPanel` при монтировании вызывает `transport.ensureDialog(dialogIdProp)`
+  — с id редактора восстанавливает диалог, без id создаёт новый; история
+  читается после успешного `ensureDialog`.
+- Контракт и `docs/04_INTEGRATION.md` фиксируют разделение ответственности:
+  id хранит редактор (`sessionStorage`, ключ `dialogId:<interfaceId>`), модуль —
+  только БЗ; стартовая последовательность: `health()` → `ensureDialog(savedId)` →
+  `history(savedId)`.
+
 ### T1: знания актуализированы под каталог редактора от 24.11.2026
 
 **Причина смены ground truth:** в `ostis-ui-editor@6fbb2e6` (`4a791c1`)

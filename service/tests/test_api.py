@@ -178,6 +178,27 @@ def test_dialog_endpoint_creates_dialog(client: TestClient) -> None:
     assert client.get(f"/history/{dialog_id}").json() == []
 
 
+def test_dialog_exists_endpoint_reports_created_dialog(client: TestClient) -> None:
+    response = client.post("/dialog")
+    assert response.status_code == 200
+    dialog_id = response.json()["dialog_id"]
+    assert client.get(f"/dialog/{dialog_id}").json()["exists"] is True
+
+
+def test_dialog_exists_endpoint_reports_unknown_dialog(client: TestClient) -> None:
+    assert client.get("/dialog/dlg-unknown-not-exist").json()["exists"] is False
+
+
+def test_ask_unknown_dialog_returns_not_found(client: TestClient) -> None:
+    """`ask` не должен подменять диалог: неизвестный id — ошибка `dialog_not_found`."""
+    response = client.post(
+        "/ask",
+        json={"question": "Что такое concept_ui_button?", "dialog_id": "dlg-unknown-not-exist"},
+    )
+    assert response.status_code == 404
+    assert response.json()["detail"]["code"] == "dialog_not_found"
+
+
 def test_stream_split_preserves_text() -> None:
     from ostis_ui_assistant.api.sse import split_for_stream
 

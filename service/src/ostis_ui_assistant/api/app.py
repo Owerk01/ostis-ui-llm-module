@@ -37,6 +37,11 @@ class DialogResponse(BaseModel):
     dialog_id: str
 
 
+class DialogExistsResponse(BaseModel):
+    dialog_id: str
+    exists: bool
+
+
 def create_app(
     settings: Settings | None = None,
     service: KnowledgeService | None = None,
@@ -77,6 +82,10 @@ def create_app(
     def create_dialog() -> DialogResponse:
         return DialogResponse(dialog_id=dialogs.create_dialog())
 
+    @app.get("/dialog/{dialog_id}", response_model=DialogExistsResponse)
+    def dialog(dialog_id: str) -> DialogExistsResponse:
+        return DialogExistsResponse(dialog_id=dialog_id, exists=dialogs.exists(dialog_id))
+
     @app.get("/history/{dialog_id}")
     def history(dialog_id: str) -> list[dict]:
         return dialogs.history(dialog_id)
@@ -92,7 +101,17 @@ def create_app(
         if not question:
             raise HTTPException(status_code=400, detail="Пустой запрос")
 
-        dialog_id = dialogs.ensure_dialog(request.dialog_id)
+        if request.dialog_id:
+            dialog_id = request.dialog_id
+            if not dialogs.exists(request.dialog_id):
+                # Неизвестный диалог не подменяет существующий: клиент передаёт id,
+                # которого ещё нет в сервисе — это ошибка, а не новый диалог.
+                raise HTTPException(
+                    status_code=404,
+                    detail={"code": "dialog_not_found", "dialog_id": request.dialog_id},
+                )
+        else:
+            dialog_id = dialogs.create_dialog()
         dialogs.add_user_message(dialog_id, question)
         assistant = dialogs.add_assistant_pending(dialog_id)
         cancel_event = cancels.create(assistant.id)

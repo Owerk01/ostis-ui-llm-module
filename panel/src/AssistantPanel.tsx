@@ -73,7 +73,7 @@ export function AssistantPanel({
 
     void (async () => {
       try {
-        const nextDialog = dialogIdProp ?? (await transport.ensureDialog())
+        const nextDialog = await transport.ensureDialog(dialogIdProp)
         if (!alive) return
         setDialogId(nextDialog)
         const history = await transport.history(nextDialog)

@@ -12,6 +12,7 @@ import type {
   MessageState,
   SourceRef,
 } from './types'
+import { DialogNotFoundError } from './types'
 
 export const DEFAULT_BASE_URL = 'http://127.0.0.1:8770'
 
@@ -119,7 +120,17 @@ export class DirectHttpTransport implements AssistantTransport {
     }
   }
 
-  async ensureDialog(): Promise<string> {
+  async ensureDialog(dialogId?: string): Promise<string> {
+    if (dialogId) {
+      const response = await this.fetchImpl(
+        `${this.baseUrl}/dialog/${encodeURIComponent(dialogId)}`,
+      )
+      if (response.status === 404) throw new DialogNotFoundError(dialogId)
+      if (!response.ok) throw new Error(`Не удалось проверить диалог: ${response.status}`)
+      const body = (await response.json()) as { exists?: boolean }
+      if (body.exists === false) throw new DialogNotFoundError(dialogId)
+      return dialogId
+    }
     const response = await this.fetchImpl(`${this.baseUrl}/dialog`, { method: 'POST' })
     if (!response.ok) throw new Error(`Не удалось создать диалог: ${response.status}`)
     const body = (await response.json()) as { dialog_id: string }
@@ -166,6 +177,7 @@ export class DirectHttpTransport implements AssistantTransport {
       })
 
       if (!response.ok) {
+        if (response.status === 404) throw new DialogNotFoundError(dialogId)
         const detail = await this.readError(response)
         throw new Error(detail)
       }

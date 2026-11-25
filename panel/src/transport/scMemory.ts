@@ -23,6 +23,7 @@ import {
 
 import { findMessageInResult, type ResultRow } from './actionResult'
 import { isStableDialogId, newDialogId } from './dialogId'
+import { DialogNotFoundError } from './types'
 import { healthFromMessages } from './health'
 import type {
   AssistantHealth,
@@ -119,8 +120,16 @@ export class ScMemoryTransport implements AssistantTransport {
     }
   }
 
-  async ensureDialog(): Promise<string> {
+  async ensureDialog(dialogId?: string): Promise<string> {
     const k = await this.keynodes()
+
+    if (dialogId) {
+      const existing = await this.findDialogById(dialogId, k)
+      if (!existing) throw new DialogNotFoundError(dialogId)
+      this.dialogId = dialogId
+      return dialogId
+    }
+
     if (this.dialogId) {
       const existing = await this.findDialogById(this.dialogId, k)
       if (existing) return this.dialogId
@@ -169,17 +178,9 @@ export class ScMemoryTransport implements AssistantTransport {
     if (this.active) throw new Error('Предыдущий запрос ещё выполняется')
 
     const k = await this.keynodes()
-    let dialog = await this.resolveDialog(dialogId, k)
-    if (!dialog) {
-      // Неизвестный id не должен читать чужой узел — создаём новый диалог.
-      dialog = await this.createNode()
-      await this.instantiate(k.dialog, dialog)
-      const id = newDialogId()
-      await this.relateNonRole(dialog, await this.createLink(id), k.nrelUiId)
-      this.dialogId = id
-    } else {
-      this.dialogId = dialogId
-    }
+    const dialog = await this.resolveDialog(dialogId, k)
+    if (!dialog) throw new DialogNotFoundError(dialogId)
+    this.dialogId = dialogId
 
     const action = await this.createAction(k, dialog, question)
     const active: ActiveRequest = { action, cancelled: false }
