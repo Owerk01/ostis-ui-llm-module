@@ -2,6 +2,23 @@
 
 ## Unreleased
 
+### T3: таймауты из конфигурации, клиент ждёт дольше LLM
+
+- В `Settings` добавлен `dialog_client_timeout_s: float = 35.0` с валидатором:
+  при `dialog_client_timeout_s <= llm_timeout_s` сервер падает при старте с
+  понятным сообщением (`test_timeout_order_validation`).
+- Клиентский таймаут убран из констант: `ACTION_TIMEOUT_MS = 30_000` удалён из
+  `scMemory.ts`. `ScMemoryTransport` и `DirectHttpTransport` получают
+  `clientTimeoutMs` из конструктора (по умолчанию из
+  `import.meta.env.VITE_DIALOG_CLIENT_TIMEOUT_S`, fallback 35 000 мс).
+- `LLM_TIMEOUT_S_BATCH` используется только в eval; в интерактиве — `LLM_TIMEOUT_S`.
+- `/health` и отчёт eval показывают фактические `llm_timeout_s` и
+  `dialog_client_timeout_s`.
+- `.env.example`, `docs/04_INTEGRATION.md`, `docs/01_CONTRACTS.md`: согласованная
+  тройка `LLM_TIMEOUT_S=25`, `DIALOG_CLIENT_TIMEOUT_S=35`,
+  `VITE_DIALOG_CLIENT_TIMEOUT_S=35000`; правило «клиент ждёт дольше, чем
+  генерирует LLM»; предупреждение про 30 с предпросмотра редактора.
+
 ### T2: диалог восстанавливается после F5 и не создаётся молча
 
 - Контракт `AssistantTransport` изменён: `ensureDialog(dialogId?: string): Promise<string>`.

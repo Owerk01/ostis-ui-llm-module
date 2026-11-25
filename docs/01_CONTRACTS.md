@@ -250,6 +250,7 @@ LLM в обработчике события не выполняется.
 | Воркеры генерации | 1 (допустимо 1–2) | `DIALOG_WORKER_THREADS` |
 | Очередь запросов | 16 | `DIALOG_QUEUE_SIZE` |
 | Интерактивный таймаут LLM | 25 с (< 30 с у редактора) | `LLM_TIMEOUT_S` |
+| Клиентский таймаут ожидания (strict > LLM_TIMEOUT_S) | 35 с | `DIALOG_CLIENT_TIMEOUT_S` / `VITE_DIALOG_CLIENT_TIMEOUT_S=35000` |
 | Таймаут eval | 120 с | `LLM_TIMEOUT_S_BATCH` |
 | Heartbeat сервиса | каждые 5 с | `SERVICE_HEARTBEAT_INTERVAL_S` |
 | Протухание аренды | 20 с | `SERVICE_LEASE_TTL_S` |

@@ -21,6 +21,7 @@ import {
   ScType,
 } from 'ts-sc-client'
 
+import { resolveClientTimeoutMs } from './timeout.ts'
 import { findMessageInResult, type ResultRow } from './actionResult'
 import { isStableDialogId, newDialogId } from './dialogId'
 import { DialogNotFoundError } from './types'
@@ -37,8 +38,7 @@ export const DEFAULT_SC_URL = 'ws://127.0.0.1:8090/ws_json'
 
 const ACTION_CLASS = 'action_answer_ui_development_question'
 const STATUS_ERROR = 'error'
-// Интерактивный таймаут согласован с редактором (30 с) и LLM_TIMEOUT_S=25.
-const ACTION_TIMEOUT_MS = 30_000
+// Клиентский таймаут ожидания ответа задаётся извне (см. clientTimeoutMs).
 const POLL_INTERVAL_MS = 400
 
 const MESSAGE_STATES: ReadonlySet<string> = new Set([
@@ -85,13 +85,16 @@ export class ScMemoryTransport implements AssistantTransport {
 
   private readonly client: ScClient
   private readonly helper: ScHelper
+  private readonly clientTimeoutMs: number
   private keynodesCache: Keynodes | null = null
   private active: ActiveRequest | null = null
   private dialogId: string | null = null
 
-  constructor(client: ScClient) {
+  constructor(client: ScClient, clientTimeoutMs?: number) {
     this.client = client
     this.helper = new ScHelper(client)
+    // Лимит берётся из переменной окружения сборки, fallback 35 с.
+    this.clientTimeoutMs = resolveClientTimeoutMs(clientTimeoutMs)
   }
 
   async health(): Promise<AssistantHealth> {
@@ -307,7 +310,11 @@ export class ScMemoryTransport implements AssistantTransport {
 
   // --- ожидание результата ---
 
-  private async waitForFinish(action: ScAddr, active: ActiveRequest): Promise<boolean> {
+  private async waitForFinish(
+    action: ScAddr,
+    active: ActiveRequest,
+    timeoutMs: number = this.clientTimeoutMs,
+  ): Promise<boolean> {
     const k = await this.keynodes()
     let settled = false
 
@@ -346,7 +353,7 @@ export class ScMemoryTransport implements AssistantTransport {
         .then((items) => items[0])
 
       const timer = globalThis.setInterval(() => void check(), POLL_INTERVAL_MS)
-      const timeout = globalThis.setTimeout(() => finish(false), ACTION_TIMEOUT_MS)
+      const timeout = globalThis.setTimeout(() => finish(false), timeoutMs)
       active.wake = () => finish(false)
       void check()
     })

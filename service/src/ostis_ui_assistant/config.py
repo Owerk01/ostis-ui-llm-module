@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from pydantic import model_validator
 
 ROOT_DIR = Path(__file__).resolve().parents[3]
 
@@ -32,6 +33,9 @@ class Settings(BaseSettings):
     llm_timeout_s: float = 25.0
     # Отдельный таймаут для eval: батч может позволить себе ждать дольше.
     llm_timeout_s_batch: float = 120.0
+    # Клиентский таймаут ожидания ответа. Должен строго превышать llm_timeout_s,
+    # иначе клиент оборвёт запрос раньше, чем LLM успеет ответить.
+    dialog_client_timeout_s: float = 35.0
     llm_max_output_tokens: int = 512
 
     # --- Обработка запросов диалога (B0-1) ---
@@ -69,3 +73,13 @@ class Settings(BaseSettings):
     @property
     def is_ollama(self) -> bool:
         return self.llm_backend == "ollama"
+
+    @model_validator(mode="after")
+    def _validate_dialog_client_timeout(self) -> "Settings":
+        if self.dialog_client_timeout_s <= self.llm_timeout_s:
+            raise ValueError(
+                "DIALOG_CLIENT_TIMEOUT_S должен быть строго больше LLM_TIMEOUT_S: "
+                f"{self.dialog_client_timeout_s} <= {self.llm_timeout_s}. "
+                "Клиент должен ждать дольше, чем генерирует LLM."
+            )
+        return self

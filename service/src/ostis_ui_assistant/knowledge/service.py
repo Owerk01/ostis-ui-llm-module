@@ -312,6 +312,10 @@ class KnowledgeService:
             "prompt_version": self.prompt_version,
             "prompt_estimated_tokens": self._prompt.system_tokens,
             "knowledge_estimated_tokens": self._prompt.knowledge_tokens,
+            "timeouts": {
+                "llm_timeout_s": self.settings.llm_timeout_s,
+                "dialog_client_timeout_s": self.settings.dialog_client_timeout_s,
+            },
         }
 
     def close(self) -> None:

@@ -367,7 +367,8 @@ def write_report(
     )
     lines.append(
         f"- Температура: {args.temperature}; "
-        f"timeout {service.settings.llm_timeout_s:g} с"
+        f"timeout {service.settings.llm_timeout_s:g} с, "
+        f"клиент {service.settings.dialog_client_timeout_s:g} с"
     )
     lines.append(f"- Вопросов: {summary['total']}; длительность прогона: {duration_s:.1f} с")
     lines.append(f"- Прогрев перед прогоном: {warmup_ms:.0f} мс (в метрики не входит)")

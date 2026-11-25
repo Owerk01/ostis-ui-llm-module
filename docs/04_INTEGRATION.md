@@ -53,14 +53,18 @@ action --nrel_result--> structure --perm-pos--> concept_ui_assistant_message
 
 ## Таймауты и потоки
 
-| Параметр | Значение |
-|---|---|
-| Интерактивный таймаут LLM | `LLM_TIMEOUT_S=25` с |
-| Ожидание в панели/редакторе | 30 с |
-| Таймаут eval | `LLM_TIMEOUT_S_BATCH=120` с |
-| Очередь запросов | `DIALOG_QUEUE_SIZE=16` |
-| Воркеры генерации | `DIALOG_WORKER_THREADS=1` (1–2) |
-| `max_events_and_agents_threads` | 32 в `platform/sc-machine.ini` (минимум 16) |
+| Параметр | Значение | Переменная |
+|---|---|---|
+| Интерактивный таймаут LLM | `LLM_TIMEOUT_S=25` с | `LLM_TIMEOUT_S` |
+| Клиентский таймаут ожидания (strict > LLM_TIMEOUT_S) | `DIALOG_CLIENT_TIMEOUT_S=35` с | `DIALOG_CLIENT_TIMEOUT_S` / `VITE_DIALOG_CLIENT_TIMEOUT_S=35000` |
+| Таймаут eval | `LLM_TIMEOUT_S_BATCH=120` с | `LLM_TIMEOUT_S_BATCH` |
+| Очередь запросов | `DIALOG_QUEUE_SIZE=16` | `DIALOG_QUEUE_SIZE` |
+| Воркеры генерации | `DIALOG_WORKER_THREADS=1` (1–2) | `DIALOG_WORKER_THREADS` |
+| `max_events_and_agents_threads` | 32 в `platform/sc-machine.ini` (минимум 16) | — |
+
+Правило: клиент ждёт дольше, чем генерирует LLM (`DIALOG_CLIENT_TIMEOUT_S > LLM_TIMEOUT_S`),
+проверяется при старте сервиса. Редактор ждёт агента 30 000 мс (previewHtml.ts), поэтому
+интерактивный таймаут LLM (25 с) укладывается в этот предел.
 
 `on_event` возвращает управление за единицы миллисекунд и не держит поток
 событий sc-machine на время LLM-запроса. При переполнении очереди действие
