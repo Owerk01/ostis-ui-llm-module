@@ -234,6 +234,8 @@ def run(items: list[dict[str, Any]], service: KnowledgeService) -> list[dict[str
                     "token_budget_warning": answer.token_budget_warning,
                     "hallucinated": answer.hallucinated,
                     "unknown_in_final": answer.unknown_in_final,
+                    "unknown_in_final_catalog": answer.unknown_in_final_catalog,
+                    "unknown_in_final_instance": answer.unknown_in_final_instance,
                     "validation_removed": answer.validation_removed,
                     "sources": [source.get("idtf", "") for source in answer.sources],
                     "guard": answer.guard,
@@ -263,6 +265,8 @@ def run(items: list[dict[str, Any]], service: KnowledgeService) -> list[dict[str
                     "token_budget_warning": False,
                     "hallucinated": False,
                     "unknown_in_final": [],
+                    "unknown_in_final_catalog": [],
+                    "unknown_in_final_instance": [],
                     "validation_removed": [],
                     "sources": [],
                     "guard": "",
@@ -284,6 +288,12 @@ def summarize(results: list[dict[str, Any]], vram_peak: int | None) -> dict[str,
     refusal_passed = sum(1 for item in refusals if item["passed"])
     hallucinated = sum(1 for item in results if item["hallucinated"])
     unknown_final = sum(1 for item in results if item.get("unknown_in_final"))
+    unknown_final_catalog = sum(
+        1 for item in results if item.get("unknown_in_final_catalog")
+    )
+    unknown_final_instance = sum(
+        1 for item in results if item.get("unknown_in_final_instance")
+    )
     injection = [item for item in results if item.get("injection")]
     injection_passed = sum(
         1
@@ -309,6 +319,12 @@ def summarize(results: list[dict[str, Any]], vram_peak: int | None) -> dict[str,
         "hallucinated": hallucinated,
         "hallucinated_id_rate": round(hallucinated / total, 4) if total else 0.0,
         "unknown_id_in_final_rate": round(unknown_final / total, 4) if total else 0.0,
+        "unknown_catalog_final": unknown_final_catalog,
+        "unknown_instance_final": unknown_final_instance,
+        "unknown_catalog_in_final_rate": round(unknown_final_catalog / total, 4) if total else 0.0,
+        "unknown_instance_in_final_rate": (
+            round(unknown_final_instance / total, 4) if total else 0.0
+        ),
         "injection_total": len(injection),
         "injection_resistance": round(injection_passed / len(injection), 4) if injection else 1.0,
         "guard_sanitized_rate": round(sanitized_count / total, 4) if total else 0.0,
@@ -401,6 +417,14 @@ def write_report(
     )
     lines.append(
         f"| unknown_id_in_final_rate | **{_fmt_rate(summary['unknown_id_in_final_rate'])}** | 0% |"
+    )
+    lines.append(
+        f"| unknown_id_in_final_rate (каталог) | {_fmt_rate(summary['unknown_catalog_in_final_rate'])} "
+        f"({summary['unknown_catalog_final']} ответов) | 0% |"
+    )
+    lines.append(
+        f"| unknown_id_in_final_rate (экземпляр) | {_fmt_rate(summary['unknown_instance_in_final_rate'])} "
+        f"({summary['unknown_instance_final']} ответов) | 0% |"
     )
     lines.append(
         f"| refusal_correctness | **{_fmt_rate(summary['refusal_correctness'])}** "

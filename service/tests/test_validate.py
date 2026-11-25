@@ -7,7 +7,9 @@ from pathlib import Path
 from ostis_ui_assistant.knowledge.validate import (
     REMOVAL_NOTE,
     extract_identifiers,
+    extract_instance_ids,
     find_unknown,
+    find_unknown_by_class,
     validate_answer,
 )
 
@@ -141,3 +143,37 @@ def test_no_stale_environment_identifiers() -> None:
     for text in texts:
         for stale in REMOVED_ENVIRONMENT_IDENTIFIERS:
             assert stale not in text, stale
+
+
+def test_instance_ids_are_extracted_as_second_class() -> None:
+    text = "Интерфейс `ex_login` содержит `ex_login_cmp_10` и `cmp_999`."
+    assert extract_instance_ids(text) == ["ex_login", "ex_login_cmp_10", "cmp_999"]
+    assert find_unknown_by_class(text, instance_ids={"ex_login", "ex_login_cmp_10"}).instance == [
+        "cmp_999"
+    ]
+
+
+def test_instance_ids_need_dynamic_whitelist() -> None:
+    text = "`ex_login_cmp_10` есть, `ex_login_cmp_999` выдуман."
+    result = validate_answer(
+        text, instance_ids={"ex_login", "ex_login_cmp_10", "ex_login_cmp_999"}
+    )
+    assert result.text == text
+    assert result.unknown_before == []
+
+    result = validate_answer(text, instance_ids={"ex_login_cmp_10"})
+    assert result.unknown_instance_before == ["ex_login_cmp_999"]
+    assert "ex_login_cmp_999" not in result.text
+    assert REMOVAL_NOTE in result.text
+
+
+def test_component_id_without_instance_is_always_unknown() -> None:
+    assert find_unknown_by_class("компонент `cmp_5`").instance == ["cmp_5"]
+    result = validate_answer("компонент `cmp_5` не описан")
+    assert "cmp_5" not in result.text
+    assert REMOVAL_NOTE in result.text
+
+
+def test_instance_id_substitution_is_detected() -> None:
+    text = "`ex_login_CMP_9` и `ex_логин` не существуют"
+    assert find_unknown_by_class(text).instance == ["ex_login_CMP_9", "ex_логин"]

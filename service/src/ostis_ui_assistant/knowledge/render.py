@@ -14,7 +14,7 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from .validate import find_unknown
+from .validate import find_unknown_by_class
 
 if TYPE_CHECKING:
     from .instance import InstanceContext
@@ -634,7 +634,9 @@ def sanitize_question(question: str) -> str:
     Модель склонна цитировать идентификатор из вопроса даже при отказе, что даёт
     ложную «галлюцинацию». Вопрос в журнале и БЗ сохраняется в исходном виде.
     """
-    unknown = find_unknown(question)
+    # Вопрос может цитировать id экземпляра из БЗ: это не галлюцинация модели,
+    # и замороженный промпт при mode=none должен остаться побайтово прежним.
+    unknown = find_unknown_by_class(question).catalog
     if not unknown:
         return question
     result = question

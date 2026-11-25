@@ -49,7 +49,8 @@ action --nrel_result--> structure --perm-pos--> concept_ui_assistant_message
   `AssistantMessage.code` и `retryable` (только для `busy`, `llm_unavailable`,
   `llm_timeout`, `agent_restarted`, `internal`); «Повторить» показываем по флагу;
 - `nrel_ui_llm_model`, `nrel_ui_prompt_version`, `nrel_ui_knowledge_source`;
-- `nrel_ui_answer_source` — узлы-основания.
+- `nrel_ui_answer_source` — узлы-основания: классы каталога и, при контексте
+  экземпляра, интерфейс/компоненты, упомянутые в финальном ответе.
 
 Результат создаётся сразу при приёме запроса, поэтому клиент может показать
 `pending` до завершения генерации. После `action_finished` сообщение уже

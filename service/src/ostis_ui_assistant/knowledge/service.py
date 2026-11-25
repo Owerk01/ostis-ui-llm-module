@@ -26,7 +26,14 @@ from .render import (
     load_template,
     sanitize_question,
 )
-from .validate import ValidationResult, extract_identifiers, find_unknown, validate_answer
+from .validate import (
+    ValidationResult,
+    extract_identifiers,
+    extract_instance_ids,
+    find_unknown_by_class,
+    is_component_id,
+    validate_answer,
+)
 
 if TYPE_CHECKING:
     from ..sc.service_state import ServiceState
@@ -61,6 +68,8 @@ class AnswerResult:
     tokens_unavailable: bool = False
     token_budget_warning: bool = False
     unknown_in_final: list[str] = field(default_factory=list)
+    unknown_in_final_catalog: list[str] = field(default_factory=list)
+    unknown_in_final_instance: list[str] = field(default_factory=list)
     knowledge_source: str = "fallback"
     guard: str = ""
     instance_tokens: int = 0
@@ -131,7 +140,9 @@ class KnowledgeService:
             result[identifier] = "HTML-представление компонентов"
         return result
 
-    def _sources_for(self, text: str) -> list[dict[str, str]]:
+    def _sources_for(
+        self, text: str, context: InstanceContext | None = None
+    ) -> list[dict[str, str]]:
         sources: list[dict[str, str]] = []
         seen: set[str] = set()
         for identifier in extract_identifiers(text):
@@ -142,7 +153,41 @@ class KnowledgeService:
                 continue
             seen.add(source_idtf)
             sources.append({"idtf": source_idtf, "labelRu": self._source_map[identifier]})
+
+        # Основания-экземпляры — наравне с каталогом: упомянутый в ответе id
+        # становится основанием, только если узел реально прочитан из БЗ.
+        if context is not None and context.mode != "none":
+            nodes = context.source_idtfs
+            for identifier in extract_instance_ids(text):
+                if identifier not in nodes or identifier in seen:
+                    continue
+                seen.add(identifier)
+                label = (
+                    "компонент интерфейса"
+                    if is_component_id(identifier)
+                    else "экземпляр интерфейса"
+                )
+                sources.append({"idtf": identifier, "labelRu": label})
         return sources
+
+    @staticmethod
+    def _allowed_instance_ids(
+        question: str, context: InstanceContext | None
+    ) -> set[str]:
+        """Id, которые модель вправе упомянуть: прочитанные + цитата вопроса.
+
+        Классы каталога проверяются по статическому whitelist, а id экземпляра —
+        только по прочитанному в этом запросе. `ex_*` из вопроса не считается
+        выдумкой модели, но без чтения из БЗ не попадает в основания. `cmp_*`
+        без прочитанного экземпляра вырезается всегда.
+        """
+        result = set(context.instance_ids) if context and context.mode != "none" else set()
+        result.update(
+            identifier
+            for identifier in extract_instance_ids(question)
+            if not is_component_id(identifier)
+        )
+        return result
 
     def _repair(
         self,
@@ -151,6 +196,7 @@ class KnowledgeService:
         *,
         deadline: float | None = None,
         cancel_event: threading.Event | None = None,
+        instance_ids: set[str] | None = None,
     ) -> str:
         """Один repair-запрос, ограниченный тем же дедлайном и отменой."""
         if cancel_event is not None and cancel_event.is_set():
@@ -158,7 +204,8 @@ class KnowledgeService:
         if deadline is not None and time.perf_counter() >= deadline:
             return text
 
-        allowed = ", ".join(sorted(ALL_IDENTIFIERS | PROPERTY_KEYS))
+        allowed_ids = ALL_IDENTIFIERS | PROPERTY_KEYS | (instance_ids or set())
+        allowed = ", ".join(sorted(allowed_ids))
         request = (
             "В ответе ассистента есть идентификаторы, которых нет в базе знаний: "
             f"{', '.join(unknown)}.\n\n"
@@ -250,19 +297,28 @@ class KnowledgeService:
                 built.knowledge_tokens,
             )
         repair_times: list[float] = []
+        allowed_instances = self._allowed_instance_ids(question, context)
+        read_instances = context.instance_ids if context and context.mode != "none" else set()
 
         def repair(text: str, unknown: list[str]) -> str:
             repair_started = time.perf_counter()
             try:
                 return self._repair(
-                    text, unknown, deadline=deadline, cancel_event=cancel_event
+                    text,
+                    unknown,
+                    deadline=deadline,
+                    cancel_event=cancel_event,
+                    instance_ids=read_instances,
                 )
             finally:
                 repair_times.append((time.perf_counter() - repair_started) * 1000)
 
-        validation: ValidationResult = validate_answer(raw_text, repair=repair)
+        validation: ValidationResult = validate_answer(
+            raw_text, repair=repair, instance_ids=allowed_instances
+        )
         latency_ms = (time.perf_counter() - started) * 1000
-        sources = self._sources_for(validation.text)
+        sources = self._sources_for(validation.text, context)
+        final_unknown = find_unknown_by_class(validation.text, instance_ids=allowed_instances)
 
         result = AnswerResult(
             text=validation.text,
@@ -278,7 +334,9 @@ class KnowledgeService:
             repair_ms=round(sum(repair_times), 1),
             tokens_unavailable=stats.tokens_unavailable,
             token_budget_warning=token_warning,
-            unknown_in_final=find_unknown(validation.text),
+            unknown_in_final=final_unknown.all,
+            unknown_in_final_catalog=final_unknown.catalog,
+            unknown_in_final_instance=final_unknown.instance,
             knowledge_source=self.knowledge_source,
             guard=guard,
             instance_tokens=built.instance_tokens,
@@ -305,6 +363,9 @@ class KnowledgeService:
             "tokens_unavailable": result.tokens_unavailable,
             "token_budget_warning": result.token_budget_warning,
             "validation_removed": result.validation_removed,
+            "unknown_in_final": result.unknown_in_final,
+            "unknown_in_final_catalog": result.unknown_in_final_catalog,
+            "unknown_in_final_instance": result.unknown_in_final_instance,
             "knowledge_source": result.knowledge_source,
             "prompt_estimated_tokens": built.system_tokens,
             "instance_tokens": result.instance_tokens,

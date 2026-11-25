@@ -179,13 +179,11 @@ class DialogWorker:
             finish_action_with_status(job.action, False)
             return
 
-        source_addrs = [addr for addr in self._source_addrs(result.sources) if addr.is_valid()]
-        if instance is not None:
-            seen = {addr.value for addr in source_addrs}
-            for addr in instance.source_addrs:
-                if addr.is_valid() and addr.value not in seen:
-                    seen.add(addr.value)
-                    source_addrs.append(addr)
+        # Основания экземпляра приходят из _sources_for(service) — так же, как
+        # основания каталога: по id, реально упомянутым в финальном ответе.
+        source_addrs = [
+            addr for addr in self._source_addrs(result.sources, instance) if addr.is_valid()
+        ]
         dialog_store.complete_assistant_message(
             job.message,
             result.text,
@@ -217,13 +215,20 @@ class DialogWorker:
             logger.exception("Не удалось закрыть запрос при остановке")
 
     @staticmethod
-    def _source_addrs(sources: list[dict[str, str]]) -> list[ScAddr]:
+    def _source_addrs(
+        sources: list[dict[str, str]], instance: InstanceContext | None = None
+    ) -> list[ScAddr]:
         result: list[ScAddr] = []
+        instance_nodes = instance.source_idtfs if instance else {}
         for source in sources:
             idtf = source.get("idtf", "")
             if not idtf:
                 continue
-            addr = ScKeynodes.get(idtf)
+            # Узлы экземпляра могут иметь только nrel_ui_id без системного idtf,
+            # поэтому адрес берём из прочитанного контекста, а не через resolve.
+            addr = instance_nodes.get(idtf)
+            if addr is None or not addr.is_valid():
+                addr = ScKeynodes.get(idtf)
             if not addr.is_valid() and idtf in PROPERTY_KEYS:
                 addr = ScKeynodes.get(f"concept_ui_{idtf}")
             if addr.is_valid():

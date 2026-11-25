@@ -8,6 +8,7 @@ from unittest.mock import MagicMock
 
 import pytest
 from fastapi.testclient import TestClient
+from sc_client.models import ScAddr
 from sc_kpm import ScResult
 
 from ostis_ui_assistant.agents import dialog_agent, worker as worker_module
@@ -126,6 +127,26 @@ def test_worker_reads_context_before_answer(monkeypatch) -> None:
 
     assert seen == [instance]
     assert complete.call_args.kwargs["state"] == worker_module.kn.STATUS_DONE
+
+
+def test_worker_resolves_instance_source_by_id(monkeypatch) -> None:
+    button = ScAddr(2002)
+    context = InstanceContext(
+        mode="selection",
+        interface_id="ex_login",
+        interface_addr=ScAddr(2001),
+        components=[ComponentData(idtf="ex_login_cmp_10", addr=button)],
+        selected_ids={"ex_login_cmp_10"},
+    )
+
+    def no_resolve(_: str) -> None:
+        raise AssertionError("адрес экземпляра не должен создаваться через resolve")
+
+    monkeypatch.setattr(worker_module.ScKeynodes, "get", no_resolve)
+    addrs = worker_module.DialogWorker._source_addrs(
+        [{"idtf": "ex_login_cmp_10", "labelRu": "компонент"}], context
+    )
+    assert addrs == [button]
 
 
 def test_direct_http_ask_with_context_reads_instance(settings, monkeypatch) -> None:

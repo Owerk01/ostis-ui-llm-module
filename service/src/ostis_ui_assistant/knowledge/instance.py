@@ -53,18 +53,48 @@ class InstanceContext:
     selected_addrs: list[Any] = field(default_factory=list)
 
     @property
+    def visible_components(self) -> list[ComponentData]:
+        """Компоненты, которые реально попали в промпт (selection — только выделенные)."""
+        if self.mode == "selection":
+            return [item for item in self.components if item.idtf in self.selected_ids]
+        return list(self.components)
+
+    @property
+    def instance_ids(self) -> set[str]:
+        """Id, которые валидатор вправе считать прочитанными из БЗ в этом запросе."""
+
+        def valid(addr: Any) -> bool:
+            return addr is not None and getattr(addr, "is_valid", lambda: False)()
+
+        result = {self.interface_id} if self.interface_id and valid(self.interface_addr) else set()
+        result.update(
+            item.idtf
+            for item in self.visible_components
+            if item.idtf and valid(item.addr)
+        )
+        return result
+
+    @property
+    def source_idtfs(self) -> dict[str, Any]:
+        """Соответствие id прочитанного экземпляра узлам БЗ для оснований ответа."""
+        result: dict[str, Any] = {}
+        candidates = [(self.interface_id, self.interface_addr)]
+        candidates.extend((item.idtf, item.addr) for item in self.visible_components)
+        for idtf, addr in candidates:
+            if idtf and addr is not None and getattr(addr, "is_valid", lambda: False)():
+                result[idtf] = addr
+        return result
+
+    @property
     def source_addrs(self) -> list[Any]:
         """Узлы БЗ, на которые можно сослаться как на основания ответа."""
         result: list[Any] = []
         seen: set[int] = set()
-        # В selection модель видит только выделенные компоненты: основания не
-        # должны раскрывать остальной интерфейс помимо блока экземпляра.
-        components = [
-            item
-            for item in self.components
-            if self.mode != "selection" or item.idtf in self.selected_ids
-        ]
-        for addr in [self.interface_addr, *self.selected_addrs, *(c.addr for c in components)]:
+        for addr in [
+            self.interface_addr,
+            *self.selected_addrs,
+            *(c.addr for c in self.visible_components),
+        ]:
             if addr is None or not getattr(addr, "is_valid", lambda: False)():
                 continue
             key = int(addr.value)
