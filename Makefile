@@ -9,7 +9,7 @@ PY    := $(VENV)/bin/python
 
 .PHONY: help setup kb machine machine-stop ollama ollama-stop pull venv smoke \
         up down service panel pack kb-load kb-load-noschema test eval agent agent-start agent-stop \
-        panel-start panel-stop smoke-action drift
+        panel-start panel-stop smoke-action drift build-transport integration-check
 
 help:
 	@echo "Платформа:"
@@ -35,6 +35,8 @@ help:
 	@echo "  make test         — pytest сервиса + typecheck панели"
 	@echo "  make eval         — прогон gold-набора и отчёт (ARGS=\"--label ...\")"
 	@echo "  make build-lib    — собрать панель как библиотеку (dist-lib)"
+	@echo "  make build-transport — собрать транспорт без React (dist-transport)"
+	@echo "  make integration-check — внешний TS-клиент: health → ask → ответ из БЗ"
 	@echo "  make agent-start / panel-start / agent-stop / panel-stop — фоновый запуск"
 
 setup:
@@ -115,6 +117,13 @@ panel-stop:
 
 build-lib:
 	@cd panel && npm run build:lib
+
+build-transport:
+	@cd panel && if [ ! -d node_modules ]; then npm ci --no-audit --no-fund; fi
+	@cd panel && npm run build:transport
+
+integration-check: build-transport
+	@node --experimental-strip-types tools/integration-check.ts
 
 panel:
 	@cd panel && if [ ! -d node_modules ]; then npm install --no-audit --no-fund; fi

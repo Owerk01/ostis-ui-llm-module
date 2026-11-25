@@ -3,6 +3,10 @@
 Изолированный компонент диалога. Панель не знает, откуда приходят ответы:
 `sc-memory` — основной транспорт через sc-память, `direct-http` — отладочный.
 
+> **AssistantPanel — не продуктовый UI.** Это эталонный dev-стенд и пример
+> встраивания. Продуктовый чат делает редактор, подключая standalone-транспорт
+> без React (`npm run build:transport` → `dist-transport/`) и свой UI-кит.
+
 ## Что внутри
 
 ```
@@ -11,9 +15,11 @@ src/
 ├── AssistantPanel.tsx          # публичный компонент
 ├── AssistantPanel.module.css
 ├── transport/
+│   ├── index.ts                # публичный API standalone-пакета без React
 │   ├── types.ts                # контракт AssistantTransport
 │   ├── scMemory.ts             # боевой транспорт через ts-sc-client
-│   └── directHttp.ts           # отладочный HTTP/SSE-транспорт
+│   ├── directHttp.ts           # отладочный HTTP/SSE-транспорт
+│   └── contract.ts             # CONTRACT_VERSION из корневого VERSION
 ├── components/
 │   ├── MessageList.tsx         # лента сообщений, ошибки, повтор
 │   ├── Composer.tsx            # ввод и отправка
@@ -34,8 +40,23 @@ UI-кит и глобальные стили редактора не испол�
 ```bash
 cd panel
 npm ci
-npm run build:lib        # dist-lib/index.js, index.css и .d.ts
+npm run build:lib        # dist-lib/index.js, index.css и .d.ts (React, dev-стенд)
+npm run build:transport  # dist-transport/ — пакет логики без React
 ```
+
+Для продуктового UI используйте `dist-transport/`: там нет React, CSS и
+`AssistantPanel`, а `ts-sc-client` остаётся peerDependency. Импорт:
+
+```ts
+import { ScClient, ScMemoryTransport } from 'ostis-ui-assistant-dialog-transport'
+
+// Конструктор сам открывает WebSocket; метода connect() у ts-sc-client нет.
+const client = new ScClient('ws://127.0.0.1:8090/ws_json')
+const transport = new ScMemoryTransport(client, 35_000)
+```
+
+Полная последовательность вызовов и обработка всех кодов — в
+[`docs/04_INTEGRATION.md`](../docs/04_INTEGRATION.md).
 
 `dist-lib/` — артефакт сборки (в `.gitignore`). Подключить его можно двумя
 способами, без правок кода этого репозитория:

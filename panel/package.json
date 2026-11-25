@@ -16,15 +16,20 @@
     "./transport/types": {
       "types": "./dist-lib/transport/types.d.ts",
       "import": "./dist-lib/index.js"
+    },
+    "./transport": {
+      "types": "./dist-transport/index.d.ts",
+      "import": "./dist-transport/index.js"
     }
   },
-  "files": ["dist-lib"],
+  "files": ["dist-lib", "dist-transport"],
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
     "build:lib": "vite build --mode lib && tsc -p tsconfig.lib.json",
+    "build:transport": "vite build --mode transport && tsc -p tsconfig.transport.json && node scripts/write-transport-package.mjs",
     "typecheck": "tsc --noEmit",
-    "test": "node --experimental-strip-types --test src/utils/formatElapsed.test.ts src/transport/health.test.ts src/transport/actionResult.test.ts src/transport/dialogId.test.ts src/transport/dialog.test.ts src/transport/dialogTimeout.test.ts src/transport/serviceHealth.test.ts src/transport/outcome.test.ts src/transport/errors.test.ts src/transport/lateResult.test.ts src/transport/directHttpLate.test.ts src/transport/askContext.test.ts src/transport/errorHint.test.ts src/retry.test.ts src/libraryEnvironment.test.ts",
+    "test": "node --experimental-strip-types --test src/utils/formatElapsed.test.ts src/transport/health.test.ts src/transport/actionResult.test.ts src/transport/dialogId.test.ts src/transport/dialog.test.ts src/transport/dialogTimeout.test.ts src/transport/serviceHealth.test.ts src/transport/outcome.test.ts src/transport/errors.test.ts src/transport/lateResult.test.ts src/transport/directHttpLate.test.ts src/transport/askContext.test.ts src/transport/errorHint.test.ts src/transport/contract.test.ts src/transport/standalone.test.ts src/retry.test.ts src/libraryEnvironment.test.ts",
     "preview": "vite preview"
   },
   "peerDependencies": {

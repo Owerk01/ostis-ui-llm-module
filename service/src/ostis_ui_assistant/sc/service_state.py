@@ -15,6 +15,7 @@ import socket
 import threading
 import uuid
 from datetime import datetime, timezone
+from pathlib import Path
 from typing import Any
 
 from sc_client.client import search_by_template, set_link_contents
@@ -39,8 +40,17 @@ STATE_BUSY = "busy"
 STATE_STOPPING = "stopping"
 STATE_STOPPED = "stopped"
 
-# Версия контракта диалога, касающаяся текущего состояния сервиса (B0-5).
-CONTRACT_VERSION = "0.1.0"
+# Версия контракта диалога: единственный источник — корневой VERSION.
+# Добавление полей = minor, изменение смысла существующих полей = major.
+CONTRACT_VERSION = (Path(__file__).resolve().parents[4] / "VERSION").read_text(
+    encoding="utf-8"
+).strip()
+
+
+def prompt_version_with_contract(base: str, pack_version: str | None = None) -> str:
+    """Версия промпта в nrel_ui_prompt_version с версией контракта и pack."""
+    result = f"{base}|contract:{CONTRACT_VERSION}"
+    return f"{result}|pack:{pack_version}" if pack_version else result
 
 
 def now_iso() -> str:
@@ -118,7 +128,7 @@ class ServiceState:
                 "state": STATE_STARTING,
                 "model": self.settings.llm_model,
                 "backend": self.settings.llm_backend,
-                "prompt_version": self.settings.prompt_version,
+                "prompt_version": prompt_version_with_contract(self.settings.prompt_version),
                 "pack_version": None,
                 "knowledge_source": None,
                 "contract_version": CONTRACT_VERSION,

@@ -23,7 +23,12 @@
 >   не долговременная память;
 > - оценка по dev/holdout: автопроверки 93.5% / 86.2%, фактическая точность
 >   по ручной разметке 94.7%, известные ошибки перечислены в `docs/03_EVAL.md`;
-> - панель как изолированная библиотека (`npm run build:lib`) для встраивания в редактор.
+> - транспорт как отдельный пакет без React (`npm run build:transport`),
+>   внешний TS-клиент получает ответ из БЗ (`make integration-check`);
+
+> **AssistantPanel — эталонный dev-стенд, не продуктовый UI.** Продуктовый чат
+> делает редактор, подключая standalone-транспорт
+> `ostis-ui-assistant-dialog-transport` (peerDependency только `ts-sc-client`).
 
 ## Быстрый старт (Linux / WSL2)
 
@@ -67,7 +72,9 @@ make test         # pytest + проверка коллизий идентифи�
 make smoke        # чтение БЗ (нужна sc-machine)
 make smoke-action # действие → ответ в БЗ (нужен агент)
 make eval ARGS="--label profile-a-final"   # gold-набор и метрики
-make build-lib    # библиотека панели в panel/dist-lib
+make build-lib    # библиотека панели в panel/dist-lib (React, dev-стенд)
+make build-transport  # транспорт без React в panel/dist-transport
+make integration-check # внешний TS-скрипт: health → ask → ответ из БЗ
 E2E_MODE=sc-memory .venv/bin/python tools/e2e_panel.py   # headless Chrome
 
 make down         # панель, агент и sc-machine
@@ -144,11 +151,11 @@ Dev-стенд позволяет сменить адрес сервиса и п
 ```
 external/            read-only клоны репозиториев команды (gitignore)
 platform/            repo.path и конфигурация sc-machine
-knowledge/           pack.json, provenance.json, prompt_v*.md (текущий v3), purpose_overrides.json
+knowledge/           pack.json, provenance.json, prompt_v*.md (текущий v4), purpose_overrides.json
 kb/ui_assistant/     наши конструкции диалога и знаний + generated тексты каталога
 tools/               setup, сборка БЗ, pack, смоук
 service/             Python-сервис: LLM, знания, валидация, FastAPI
-panel/               панель чата React + dev-стенд
+panel/               панель чата React + dev-стенд и standalone-транспорт
 docs/                контракты, знания, методика оценки, скриншоты
 eval/                gold-набор и отчёты прогонов
 ```

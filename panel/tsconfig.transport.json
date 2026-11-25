@@ -1,0 +1,12 @@
+{
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    "noEmit": false,
+    "declaration": true,
+    "emitDeclarationOnly": true,
+    "outDir": "dist-transport",
+    "rootDir": "src/transport"
+  },
+  "include": ["src/transport/index.ts"],
+  "exclude": ["src/**/*.test.ts"]
+}

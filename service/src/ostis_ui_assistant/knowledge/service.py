@@ -363,6 +363,7 @@ class KnowledgeService:
             "answer": result.text,
             "model": self.settings.llm_backend + "/" + result.model,
             "prompt_version": result.prompt_version,
+            "contract_version": CONTRACT_VERSION,
             "pack_version": result.pack_version,
             "latency_ms": result.latency_ms,
             "repair_ms": result.repair_ms,

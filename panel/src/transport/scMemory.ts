@@ -20,9 +20,10 @@ import {
   ScLinkContentType,
   ScTemplate,
   ScType,
-} from 'ts-sc-client'
+} from './scClientApi'
 
 import { normalizeAskOptions } from './askOptions.ts'
+import { CONTRACT_VERSION } from './contract.ts'
 import { resolveClientTimeoutMs } from './timeout.ts'
 import { AssistantBusy, AssistantSchemaMissing } from './errors.ts'
 import { LateResult } from './lateResult.ts'
@@ -155,7 +156,7 @@ export class ScMemoryTransport implements AssistantTransport {
       promptVersion: serviceSnapshot?.promptVersion ?? undefined,
       knowledgeSource: source,
       queueDepth,
-      contractVersion: serviceSnapshot?.contractVersion ?? '0.1.0',
+      contractVersion: serviceSnapshot?.contractVersion ?? CONTRACT_VERSION,
     }
   }
 

@@ -26,6 +26,7 @@ from ..llm.base import LLMTimeout, LLMUnavailable
 from ..sc import dialog_store
 from ..sc import keynodes as kn
 from ..sc.outcomes import DEFAULT_CODE
+from ..sc.service_state import prompt_version_with_contract
 
 if TYPE_CHECKING:
     from ..sc.service_state import ServiceState
@@ -190,7 +191,9 @@ class DialogWorker:
             job.message,
             result.text,
             model=result.model,
-            prompt_version=f"{result.prompt_version}|pack:{result.pack_version}",
+            prompt_version=prompt_version_with_contract(
+                result.prompt_version, result.pack_version
+            ),
             sources=source_addrs,
             state=kn.STATUS_DONE,
             knowledge_source=result.knowledge_source,

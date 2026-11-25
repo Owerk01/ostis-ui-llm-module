@@ -9,7 +9,7 @@ from ostis_ui_assistant.config import Settings
 from ostis_ui_assistant.knowledge.service import KnowledgeService
 from ostis_ui_assistant.llm.base import LLMStats
 from ostis_ui_assistant.sc import service_state
-from ostis_ui_assistant.sc.service_state import ServiceState
+from ostis_ui_assistant.sc.service_state import CONTRACT_VERSION, ServiceState
 
 
 class DummyBackend:
@@ -44,7 +44,7 @@ def _state_with(settings: Settings, state: str, *, knowledge_source: str = "kb")
         "prompt_version": "v4",
         "pack_version": "2026-11-18T00:00:00Z",
         "knowledge_source": knowledge_source,
-        "contract_version": "0.1.0",
+        "contract_version": CONTRACT_VERSION,
         "queue_capacity": 16,
         "queue_size": 0,
         "active_requests": 0,
@@ -72,7 +72,7 @@ def test_health_from_service_node_ready(settings: Settings) -> None:
     assert health["promptVersion"] == "v4"
     assert health["knowledgeSource"] == "kb"
     assert health["queueDepth"] == 0
-    assert health["contractVersion"] == "0.1.0"
+    assert health["contractVersion"] == CONTRACT_VERSION
     assert health["timeouts"]["llmTimeoutS"] == 25.0
     assert health["timeouts"]["dialogClientTimeoutS"] == 35.0
 

@@ -157,7 +157,7 @@
 | `nrel_ui_message_time` | ISO-8601 UTC |
 | `nrel_ui_message_state` | `pending` / `streaming` (зарезервирован) / `done` / `error` / `cancelled` |
 | `nrel_ui_message_code` | машиночитаемый код: `pending` до ответа; после — `ok`, `busy`, `llm_unavailable`, `llm_timeout`, `invalid_request`, `cancelled`, `agent_restarted`, `schema_missing`, `schema_mismatch`, `dialog_not_found`, `internal` |
-| `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `<версия промпта>\|pack:<ISO>` (сейчас `v4`) |
+| `nrel_ui_llm_model`, `nrel_ui_prompt_version` | модель и `<версия промпта>\|contract:<версия контракта>\|pack:<ISO>` (сейчас `v4\|contract:0.2.0`) |
 | `nrel_ui_answer_source` | ответ → узел-основание |
 | `nrel_ui_knowledge_source` (существующее) | ответ → sc-link `kb` / `fallback` / `unknown` |
 | `nrel_ui_dialog_context` (существующее) | user-сообщение → узел контекста запроса (T7, только режим не `none`) |
@@ -279,6 +279,14 @@ Read-путь читает экземпляр только через `ScKeynode
 direct-http отдаёт `tokenBudgets.historyTurns`.
 
 ### Транспорт панели
+
+Логика транспорта вынесена в самостоятельный пакет без React:
+`panel/src/transport/index.ts` → `panel/dist-transport/` (`npm run build:transport`).
+В пакете есть `ScMemoryTransport`, `DirectHttpTransport`, типы `AssistantTransport`,
+`AssistantMessage`, `AssistantHealth`, `OutcomeCode`, ошибки, `DEFAULT_SC_URL` и
+утилиты `dialogId`. Единственная peerDependency — `ts-sc-client`; `AssistantPanel`
+и CSS туда не попадают и остаются эталонным dev-стендом (не продуктовый UI).
+Порядок вызовов и пример без React — в `docs/04_INTEGRATION.md`.
 
 `panel/src/transport/scMemory.ts` (`ScMemoryTransport`):
 
@@ -429,7 +437,23 @@ Heartbeat обновляется фоновым потоком раз в 5 с. �
 ## Качество и guard идентификаторов
 
 - Рабочий промпт — `knowledge/prompt_v4.md`, версия в журнале и БЗ — `v4`.
-  В `nrel_ui_prompt_version` пишется строка `v4|pack:<ISO-время сборки>`.
+  В `nrel_ui_prompt_version` пишется строка
+  `v4|contract:<версия контракта>|pack:<ISO-время сборки>`, где версия контракта
+  берётся из корневого `VERSION` (сейчас `0.2.0`).
+
+### Версия контракта
+
+Единственный источник версии — корневой файл `VERSION`. Сервис читает его при
+старте и пишет `contract_version` в узел `concept_ui_dialog_service` (оттуда
+`/health` отдаёт `contractVersion`) и в `nrel_ui_prompt_version` последнего
+assistant-сообщения. Транспорт сверяет `health.contractVersion` со своей
+константой `CONTRACT_VERSION` в сборке.
+
+Правила semver: добавление полей (обратно совместимое расширение) — **minor**,
+изменение смысла существующих полей или правил — **major**. Правка текста без
+изменения контракта версию не поднимает. Версия входит в имя/метаданные
+отдельного transport-пакета, поэтому редактор может обнаружить несовместимость
+до первого вопроса.
 - **Санитизация вопроса.** Неизвестный системный идентификатор заменяется на
   «неизвестный идентификатор», после чего вопрос **всё равно уходит в LLM**.
   В журнале `guard = "sanitized"`, исходный текст в БЗ и JSONL не меняется.

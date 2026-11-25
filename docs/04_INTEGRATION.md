@@ -103,56 +103,148 @@ structure = get_action_result(action)
 
 ## Минимальный пример на TypeScript
 
+Транспорт вынесен в отдельный пакет без React:
+
+```bash
+cd panel && npm run build:transport
+# артефакт: panel/dist-transport/ (package.json, index.js, *.d.ts)
+```
+
+`ts-sc-client` остаётся peerDependency; React в зависимостях пакета нет.
+Полный живой пример без React — `tools/integration-check.ts`
+(`make integration-check`, флаг `--build-only` проверяет только сборку).
+
 ```ts
-import { ScClient } from 'ts-sc-client'
-import { ScMemoryTransport } from 'ostis-ui-assistant-panel'
+import {
+  ScClient,
+  ScMemoryTransport,
+  DEFAULT_SC_URL,
+  CONTRACT_VERSION,
+  AssistantTimeout,
+  AssistantBusy,
+  AssistantCancelled,
+  AssistantSchemaMissing,
+  AssistantDialogNotFound,
+  isRetryable,
+  isStableDialogId,
+  type AssistantTransport,
+  type AssistantMessage,
+  type OutcomeCode,
+} from 'ostis-ui-assistant-dialog-transport'
 
-const client = new ScClient('ws://127.0.0.1:8090/ws_json')
-await client.connect()
-const transport = new ScMemoryTransport(client)
+// Конструктор сам открывает WebSocket; метода connect() у ts-sc-client нет.
+const client = new ScClient(DEFAULT_SC_URL)
+await new Promise<void>((resolve, reject) => {
+  const timer = setTimeout(() => reject(new Error('sc-machine недоступен')), 5000)
+  client.addEventListener('open', () => { clearTimeout(timer); resolve() })
+  client.addEventListener('error', () => { clearTimeout(timer); reject(new Error('sc-machine недоступен')) })
+})
+const transport: AssistantTransport = new ScMemoryTransport(client, 35_000)
 
+// 1. health: схема, версии, живой агент.
 const health = await transport.health()
 if (health.schemaLoaded === false) {
   throw new Error('Схема ассистента не загружена в БЗ: выполните make kb-load')
 }
-if (health.agentAlive === false) {
+if (health.contractVersion !== CONTRACT_VERSION) {
+  throw new Error(`Несовместимая версия контракта: ${health.contractVersion}`)
+}
+if (health.agentAlive === false || !health.llm.reachable) {
   // Чат показываем, но ввод блокируем и показываем баннер.
   console.warn('Агент диалога не запущен: make agent-start')
 }
-if (!health.llm.reachable) {
-  throw new Error('Агент диалога не запущен: выполните make agent-start')
+
+// 2. ensureDialog(savedId): редактор хранит id в sessionStorage по interfaceId.
+const savedId: string | undefined = undefined
+const dialogId = savedId && isStableDialogId(savedId)
+  ? await transport.ensureDialog(savedId)
+  : await transport.ensureDialog()
+
+// 3. history: предыдущие ходы восстанавливаются после F5.
+const history: AssistantMessage[] = await transport.history(dialogId)
+history.forEach((message) => handleOutcome(message.code))
+
+// 4. ask(context): контекст экземпляра передаёт редактор, а не транспорт.
+function handleOutcome(code: OutcomeCode): void {
+  switch (code) {
+    case 'ok':
+      return
+    case 'pending':
+      // Сообщение ещё генерируется: ждём или вызываем readActionResult.
+      return
+    case 'busy':
+    case 'llm_unavailable':
+    case 'llm_timeout':
+    case 'agent_restarted':
+    case 'internal':
+      console.warn(`${code}: можно повторить вопрос`)
+      return
+    case 'invalid_request':
+    case 'cancelled':
+    case 'schema_missing':
+    case 'schema_mismatch':
+    case 'dialog_not_found':
+      console.error(`${code}: повтор без изменений не поможет`)
+      return
+  }
 }
 
-// Id диалога хранит редактор (sessionStorage, ключ dialogId:<interfaceId>).
-// Модуль хранит только БЗ, поэтому после F5 диалог восстанавливается через id.
-const dialogId = await transport.ensureDialog(savedDialogId)
-const answer = await transport.ask(dialogId, 'Что такое concept_ui_button?')
-// answer.state: pending | done | error | cancelled
-// answer.text — финальный текст, answer.sources — основания
+const options = {
+  context: {
+    mode: 'selection' as const,
+    interfaceId: 'ex_login',
+    componentIds: ['ex_login_cmp_10'],
+  },
+}
+let answer: AssistantMessage
+try {
+  answer = await transport.ask(dialogId, 'Что делает эта кнопка?', options)
+} catch (error) {
+  if (error instanceof AssistantTimeout) {
+    // 5a. Не шлём вопрос повторно: дочитываем то же действие.
+    const late = await transport.readActionResult(error.actionId)
+    if (!late) throw error
+    answer = late
+  } else if (
+    error instanceof AssistantBusy ||
+    error instanceof AssistantCancelled ||
+    error instanceof AssistantSchemaMissing ||
+    error instanceof AssistantDialogNotFound
+  ) {
+    throw error
+  } else {
+    throw error
+  }
+}
+handleOutcome(answer.code)
+console.log(answer.text, answer.sources, isRetryable(answer.code))
 
-// Вопрос о конкретном интерфейсе: передайте контекст экземпляра.
-// Панель не сканирует БЗ сама, она передаёт только выбор пользователя.
-const contextual = await transport.ask(dialogId, 'Что делает эта кнопка?', {
-  context: { mode: 'selection', interfaceId: 'ex_login', componentIds: ['ex_login_cmp_10'] },
+// 5b. Мягкая отмена: перестаём ждать, конструкции в БЗ не трогаем.
+const controller = new AbortController()
+const pending = transport.ask(dialogId, 'Отменённый вопрос', {
+  signal: controller.signal,
 })
+controller.abort()
+await transport.cancel('')
+await pending.catch(() => undefined)
 ```
 
-Кнопка «Новый диалог» создаёт свежий id (например, через
-`transport.ensureDialog()` без аргумента) и переводит панель в режим создания.
-
-Панель ждёт `action_finished` не дольше 35 с (конфиг). `pending`-сообщение доступно
-сразу после приёма запроса, поэтому индикатор обработки можно показывать до
-завершения генерации.
+Кнопка «Новый диалог» создаёт свежий id (`ensureDialog()` без аргумента).
+Клиент ждёт `action_finished` не дольше 35 с (`DIALOG_CLIENT_TIMEOUT_S`,
+`VITE_DIALOG_CLIENT_TIMEOUT_S`) — больше чем LLM (25 с) и меньше чем 30 с у
+`previewHtml.ts`.
 
 ## Матрица совместимости
 
 | Компонент | Версия / контракт | Что важно |
 |---|---|---|
+| Наш transports ↔ схема редактора | контракт `0.2.0` (`VERSION`, `contractVersion`, `v4\|contract:0.2.0\|pack:<ISO>`) | добавление полей — minor, изменение смысла — major; сверяйте `health.contractVersion` перед вызовом `ask` |
 | sc-machine | 0.10.5, C++20 | `parallel_actions = true`, `max_events_and_agents_threads ≥ 16` (в репозитории 32) |
-| `ostis-ui-editor` | `previewHtml.ts` | ждёт агента 30 000 мс; наш `LLM_TIMEOUT_S=25` укладывается |
-| `ostis-ui` (транслятор) | `action_translate_sc_to_html` | наш агент не вызывает и не изменяет его ключевые узлы |
+| `ostis-ui-editor` | `previewHtml.ts`, ожидание 30 000 мс | наш клиентский таймаут 35 с и LLM 25 с согласованы |
+| `ostis-ui` (транслятор) | `action_translate_sc_to_html` | агент не вызывает и не изменяет его ключевые узлы |
 | `UI-adaptation` | контракт A/B/C | единственный писатель — один экземпляр нашего агента на БЗ |
-| `ts-sc-client` / `py-sc-kpm` | sc-machine 0.10.x | результат действия — `nrel_result → структура → сообщение` |
+| `ts-sc-client` / `py-sc-kpm` | 0.5.0 / sc-machine 0.10.x | результат действия — `nrel_result → структура → сообщение` |
+| `ostis-ui-assistant-dialog-transport` | `0.2.0` | standalone-пакет, peerDependency только `ts-sc-client` |
 
 ## Что модуль не делает
 

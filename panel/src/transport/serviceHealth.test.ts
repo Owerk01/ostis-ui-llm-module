@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
+import { CONTRACT_VERSION } from './contract.ts'
 import { parseServiceState, serviceAlive, SERVICE_LEASE_TTL_S } from './serviceHealth.ts'
 
 const SNAPSHOT = JSON.stringify({
@@ -12,7 +13,7 @@ const SNAPSHOT = JSON.stringify({
   prompt_version: 'v4',
   pack_version: '2026-11-18T00:00:00Z',
   knowledge_source: 'kb',
-  contract_version: '0.1.0',
+  contract_version: CONTRACT_VERSION,
   queue_capacity: 16,
   queue_size: 0,
   active_requests: 0,
@@ -30,7 +31,7 @@ test('parseServiceState: поля узла состояния доступны �
   assert.equal(snapshot.packVersion, '2026-11-18T00:00:00Z')
   assert.equal(snapshot.promptVersion, 'v4')
   assert.equal(snapshot.knowledgeSource, 'kb')
-  assert.equal(snapshot.contractVersion, '0.1.0')
+  assert.equal(snapshot.contractVersion, CONTRACT_VERSION)
   assert.equal(snapshot.queueSize, 0)
 })
 

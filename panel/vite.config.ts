@@ -1,31 +1,46 @@
 import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
-// Обычная сборка — dev-стенд; `--mode lib` — библиотека для встраивания в редактор.
+// Обычная сборка — dev-стенд; `--mode lib` — React-панель;
+// `--mode transport` — самостоятельный пакет логики без React.
 export default defineConfig(({ mode }) => ({
-  plugins: [react()],
+  plugins: mode === 'transport' ? [] : [react()],
   server: {
     host: '127.0.0.1',
     port: 5173,
     strictPort: true,
   },
   build:
-    mode === 'lib'
+    mode === 'transport'
       ? {
-          outDir: 'dist-lib',
+          outDir: 'dist-transport',
           emptyOutDir: true,
           cssCodeSplit: false,
           lib: {
-            entry: 'src/index.ts',
+            entry: 'src/transport/index.ts',
             formats: ['es'],
             fileName: 'index',
           },
           rollupOptions: {
-            external: ['react', 'react-dom', 'react/jsx-runtime', 'ts-sc-client'],
+            external: ['ts-sc-client'],
           },
         }
-      : {
-          outDir: 'dist',
-          sourcemap: true,
-        },
+      : mode === 'lib'
+        ? {
+            outDir: 'dist-lib',
+            emptyOutDir: true,
+            cssCodeSplit: false,
+            lib: {
+              entry: 'src/index.ts',
+              formats: ['es'],
+              fileName: 'index',
+            },
+            rollupOptions: {
+              external: ['react', 'react-dom', 'react/jsx-runtime', 'ts-sc-client'],
+            },
+          }
+        : {
+            outDir: 'dist',
+            sourcemap: true,
+          },
 }))

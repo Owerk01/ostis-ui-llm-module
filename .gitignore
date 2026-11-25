@@ -23,6 +23,7 @@ build/
 node_modules/
 panel/dist/
 panel/dist-lib/
+panel/dist-transport/
 panel/.vite/
 
 # Журналы

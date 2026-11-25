@@ -2,6 +2,26 @@
 
 ## Unreleased
 
+### T10: транспорт как отдельный артефакт без React
+
+- `npm run build:transport` собирает `panel/dist-transport/` с публичным entry
+  `src/transport/index.ts`: `ScMemoryTransport`, `DirectHttpTransport`, типы
+  (`AssistantTransport`, `AssistantMessage`, `AssistantHealth`, `OutcomeCode`,
+  ошибки), `DEFAULT_SC_URL`, `dialogId`-утилиты и `CONTRACT_VERSION`. React и CSS
+  в пакет не попадают, `ts-sc-client` — единственная peerDependency.
+- `AssistantPanel` остаётся только эталонным dev-стендом; в README явно помечен
+  как «не продуктовый UI». Продуктовый чат собирает редактор на транспорте.
+- Версия контракта вынесена в корневой `VERSION` (сейчас `0.2.0`): сервис пишет
+  её в узел состояния и в `nrel_ui_prompt_version` (`v4|contract:0.2.0|pack:…`),
+  транспорт сверяет `health.contractVersion`. Добавление полей — minor, смена
+  смысла — major.
+- `docs/04_INTEGRATION.md`: полная TypeScript-последовательность
+  `health → ensureDialog(savedId) → history → ask(context) → readActionResult/
+  cancel`, все коды исхода и таймауты, матрица совместимости версий.
+- `make integration-check` и `tools/integration-check.ts`: внешний минимальный
+  TS-клиент без React получает ответ из БЗ; флаг `--build-only` проверяет только
+  собранный пакет. Сборка нормализует CJS/ESM-импорт `ts-sc-client`.
+
 ### T9: история диалога в промпте
 
 - Последние `DIALOG_HISTORY_TURNS` завершённых сообщений (по умолчанию 6)
